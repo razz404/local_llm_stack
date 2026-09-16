@@ -2,6 +2,17 @@
 
 All notable project changes are documented here.
 
+## Unreleased
+
+### Added
+
+- model-selection guide covering hardware sizing, context and memory headroom
+- guidance for FP32, FP16/BF16, 8-bit and 4-bit model loading
+- quantization caveats covering quality, dependencies, provenance and redistribution
+- Hugging Face gated-model and authentication guidance
+- notes on model-specific licences and terms, including the distinction between the project's MIT licence and downloaded model weights
+- practical Qwen3 and Gemma examples for local testing
+
 ## 0.1.0 - 2026-09-16
 
 Initial documented public version.
