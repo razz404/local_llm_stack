@@ -1,0 +1,37 @@
+# Local dependency and model directories
+packages/
+models/
+cache/
+
+# Runtime/user data
+data/
+chats/
+logs/
+temp/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+
+# Tooling / editors
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local secrets/config overrides
+.env
+.env.*
+config.local.json
