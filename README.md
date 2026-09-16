@@ -211,4 +211,8 @@ Planned areas include chat persistence, model selection, document ingestion/RAG 
 
 ## License
 
-No project license has been selected yet. Model files are not part of this repository and remain subject to the terms of their upstream publisher.
+This project is released under the [MIT License](LICENSE).
+
+You are free to use, copy, modify, merge, publish, distribute, sublicense and sell copies of this project's code under the terms of the MIT License.
+
+Model weights and third-party dependencies are not relicensed by this repository. They remain subject to the licenses and terms of their respective upstream publishers.
