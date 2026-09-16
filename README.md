@@ -73,6 +73,7 @@ local_llm_stack/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── INSTALLATION.md
+│   ├── MODEL_SELECTION.md   # Choosing models, quantization and licence/access notes
 │   ├── OFFLINE.md
 │   └── TROUBLESHOOTING.md
 ├── packages/               # Created locally; ignored by Git
@@ -109,6 +110,31 @@ models/qwen3-0.6b/
 There is no external inference API in the default configuration.
 
 See [docs/OFFLINE.md](docs/OFFLINE.md) for the exact boundary and verification steps.
+
+## Choosing an LLM
+
+Do not choose a model only by parameter count. Local inference is constrained by available system RAM, GPU VRAM, precision, context length, runtime overhead, licence terms and Hugging Face access requirements.
+
+The project keeps **Qwen3-0.6B** as the default because it is small, works well as a CPU development model, is available directly through Transformers, and its official Hugging Face repository uses Apache-2.0.
+
+A practical starting point is:
+
+| Hardware | First model to try |
+| --- | --- |
+| CPU-only laptop, 16 GB RAM | Qwen3-0.6B |
+| CPU-only laptop, 16 GB RAM, slower inference acceptable | Qwen3-1.7B |
+| NVIDIA GPU with around 8-12 GB VRAM | Qwen3-4B in BF16/FP16 where it fits |
+| NVIDIA GPU with around 12 GB VRAM | Qwen3-8B in 4-bit is an interesting target |
+
+These are starting points, not guarantees. Context length, KV cache and runtime overhead also consume memory.
+
+Quantization can make larger models practical, but 8-bit and especially 4-bit loading add trade-offs around quality, hardware/backend compatibility, dependencies and model provenance. A quantized checkpoint also remains subject to the original model's licence and terms.
+
+Hugging Face is a hosting platform, not a single model licence. Some models are openly downloadable under permissive licences; others use custom terms or are gated and require a Hugging Face account, an access request, authentication, or acceptance of additional conditions. The project's MIT licence applies to this repository's code, **not** to model weights downloaded from Hugging Face.
+
+Read the full guide before changing the default model:
+
+**[Choosing a local LLM: hardware, quantization, Hugging Face access and licences](docs/MODEL_SELECTION.md)**
 
 ## Configuration
 
@@ -196,13 +222,15 @@ Version 0.1 provides:
 - streaming output
 - configurable system prompt and generation settings
 - terminal smoke test
+- documented guidance for model selection, quantization, Hugging Face gating and model-specific licences/terms
 
-Planned areas include chat persistence, model selection, document ingestion/RAG and optional local tools. These are intentionally not part of the first minimal stack.
+Planned areas include chat persistence, interactive model selection, benchmark tooling, quantized model loading, document ingestion/RAG and optional local tools. These are intentionally not part of the first minimal stack.
 
 ## Documentation
 
 - [Installation](docs/INSTALLATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Choosing a model](docs/MODEL_SELECTION.md)
 - [Offline operation](docs/OFFLINE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Security](SECURITY.md)
@@ -215,4 +243,4 @@ This project is released under the [MIT License](LICENSE).
 
 You are free to use, copy, modify, merge, publish, distribute, sublicense and sell copies of this project's code under the terms of the MIT License.
 
-Model weights and third-party dependencies are not relicensed by this repository. They remain subject to the licenses and terms of their respective upstream publishers.
+Model weights and third-party dependencies are not relicensed by this repository. They remain subject to the licences and terms of their respective upstream publishers.
