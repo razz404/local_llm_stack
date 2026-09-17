@@ -12,6 +12,20 @@ python bootstrap.py
 
 The bootstrap installs packages into the local `packages/` directory with pip `--target`.
 
+## `ChatInterface.__init__() got an unexpected keyword argument 'type'`
+
+This is a Gradio 6 compatibility issue. Gradio 6 removed the `type` argument from `gr.ChatInterface` because message dictionaries are now the only supported chat-history format.
+
+Current `app.py` does not pass `type="messages"` to `ChatInterface`. The runtime still accepts both message dictionaries and the legacy tuple/list history shape so the application remains compatible with supported Gradio 5 and 6 versions.
+
+Check the installed Gradio version with:
+
+```cmd
+python -c "import sys; sys.path.insert(0, r'packages'); import gradio; print(gradio.__version__)"
+```
+
+If a local checkout still contains `type="messages"` inside `gr.ChatInterface(...)`, update the repository and run `python app.py` again. No model re-download is required.
+
 ## PyTorch shows `+cpu` / `CUDA: False`
 
 Check:
