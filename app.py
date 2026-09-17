@@ -20,9 +20,12 @@ def chat(message, history):
 def main():
     ui = settings["ui"]
 
+    # Gradio 6 removed the ChatInterface `type` argument because messages is
+    # now the only supported chat-history format. Leaving the argument out also
+    # keeps this compatible with Gradio 5; LocalLLM normalises both message and
+    # legacy tuple/list history formats.
     demo = gr.ChatInterface(
         fn=chat,
-        type="messages",
         title=ui.get("title", "Local AI"),
         description=ui.get(
             "description",
