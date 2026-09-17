@@ -154,9 +154,27 @@ A low RSS immediately after model load followed by a large increase after the co
 
 Reported by the loaded Transformers/PyTorch model when available. It is useful for understanding parameter/storage footprint but is not identical to process RSS or total machine memory consumption. Some quantized tensor subclasses may not expose a usable footprint through the same API; in that case the benchmark records `null` rather than failing the run.
 
+For the verified Dell Latitude 5340 TorchAO comparison, `model_memory_footprint_gib` remained 6.41 GiB for FP32 and both INT8 variants even though warm process RSS ranged from 6.497 GiB down to 2.668 GiB. For that backend/configuration, process RSS was therefore the more informative memory comparison.
+
 ### CUDA peak allocated/reserved
 
 Values reported by PyTorch's CUDA allocator. v0.2 records these separately for cold and warm passes. They are useful for relative testing but do not equal the total VRAM shown by every system monitoring tool.
+
+## Verified reference measurements
+
+The repository now keeps selected real-hardware results under `benchmarks/reference/` and summarizes them in [Verified benchmark results](VERIFIED_BENCHMARKS.md).
+
+The first recorded CPU comparison used Qwen3-1.7B on a Dell Latitude 5340 with 16 GB RAM, Python 3.13.14 and PyTorch 2.14.0+cpu. TorchAO runs used TorchAO 0.18.0.
+
+Warm-pass results from that machine were:
+
+| Profile | Warm TTFT | Warm tok/s | Warm RSS |
+| --- | ---: | ---: | ---: |
+| FP32 | **2.120 s** | **3.078** | 6.497 GiB |
+| TorchAO INT8 weight-only | 3.711 s | 1.230 | 2.801 GiB |
+| TorchAO INT8 dynamic | 87.904 s | 0.432 | **2.668 GiB** |
+
+These values are observations from one tested environment, not general claims about TorchAO performance on every CPU or operating system.
 
 ## Suggested test matrix
 
