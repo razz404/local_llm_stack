@@ -21,6 +21,30 @@
     "gated": false,
     "recommended_for": "CPU-only laptops with 16 GB RAM when slower inference is acceptable."
   },
+  "qwen3-1.7b-cpu-int8-dynamic": {
+    "label": "Qwen3 1.7B - CPU TorchAO INT8 dynamic",
+    "id": "Qwen/Qwen3-1.7B",
+    "local_dir": "models/qwen3-1.7b",
+    "device": "cpu",
+    "dtype": "float32",
+    "quantization": "torchao-int8-dynamic",
+    "license": "Apache-2.0",
+    "gated": false,
+    "experimental": true,
+    "recommended_for": "Experimental CPU benchmark: INT8 dynamic activations + INT8 weights via TorchAO. Compare directly with qwen3-1.7b-cpu."
+  },
+  "qwen3-1.7b-cpu-int8-weightonly": {
+    "label": "Qwen3 1.7B - CPU TorchAO INT8 weight-only",
+    "id": "Qwen/Qwen3-1.7B",
+    "local_dir": "models/qwen3-1.7b",
+    "device": "cpu",
+    "dtype": "float32",
+    "quantization": "torchao-int8-weightonly",
+    "license": "Apache-2.0",
+    "gated": false,
+    "experimental": true,
+    "recommended_for": "Experimental CPU benchmark: INT8 weights with higher-precision activations via TorchAO. Compare directly with the FP32 and dynamic INT8 profiles."
+  },
   "qwen3-4b-cuda-bf16": {
     "label": "Qwen3 4B - CUDA BF16 baseline",
     "id": "Qwen/Qwen3-4B",
