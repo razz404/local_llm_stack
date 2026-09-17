@@ -1,0 +1,44 @@
+{
+  "benchmark_schema": 2,
+  "profile": "qwen3-1.7b-cpu-int8-weightonly",
+  "model_id": "Qwen/Qwen3-1.7B",
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "quantization": "torchao-int8-weightonly",
+  "python": "3.13.14",
+  "torch": "2.14.0+cpu",
+  "torchao": "0.18.0",
+  "load_seconds": 26.803,
+  "prompt_tokens": 81,
+  "max_new_tokens": 128,
+  "process_rss_before_gib": 0.301,
+  "process_rss_after_load_gib": 2.332,
+  "model_memory_footprint_gib": 6.41,
+  "cold_run": {
+    "time_to_first_text_seconds": 3.34,
+    "generation_seconds": 107.289,
+    "output_tokens": 128,
+    "output_tokens_per_second": 1.193,
+    "process_rss_after_gib": 2.8
+  },
+  "warm_run": {
+    "time_to_first_text_seconds": 3.711,
+    "generation_seconds": 104.094,
+    "output_tokens": 128,
+    "output_tokens_per_second": 1.23,
+    "process_rss_after_gib": 2.801
+  },
+  "warm_vs_cold": {
+    "warm_throughput_speedup_x": 1.031,
+    "warm_ttft_improvement_percent": -11.1,
+    "warm_generation_time_improvement_percent": 3.0,
+    "responses_match": true
+  },
+  "response": "En **lokal språkmodell** är en modell som skapas och används **endast lokalt** – dvs. på en specifik dator eller enhet – utan att behöva ansluta till nätverk eller externa resurser. Den används för att utföra språkliga uppgifter som förståelse, generering och översättning av text.\n\n### Två fördelar med att köra en lokal språkmodell lokalt:\n\n1. **Bästa prestanda i begränsade miljö",
+  "warm_response": "En **lokal språkmodell** är en modell som skapas och används **endast lokalt** – dvs. på en specifik dator eller enhet – utan att behöva ansluta till nätverk eller externa resurser. Den används för att utföra språkliga uppgifter som förståelse, generering och översättning av text.\n\n### Två fördelar med att köra en lokal språkmodell lokalt:\n\n1. **Bästa prestanda i begränsade miljö",
+  "time_to_first_text_seconds": 3.34,
+  "generation_seconds": 107.289,
+  "output_tokens": 128,
+  "output_tokens_per_second": 1.193,
+  "process_rss_after_generation_gib": 2.8
+}
