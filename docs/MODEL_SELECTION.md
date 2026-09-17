@@ -30,12 +30,14 @@ python bootstrap.py --list-profiles
 | Profile | Upstream model | Precision / quantization | Intended hardware |
 | --- | --- | --- | --- |
 | `qwen3-0.6b-cpu` | `Qwen/Qwen3-0.6B` | unquantized / auto dtype | CPU baseline, 16 GB RAM |
-| `qwen3-1.7b-cpu` | `Qwen/Qwen3-1.7B` | unquantized / auto dtype | CPU quality step-up |
+| `qwen3-1.7b-cpu` | `Qwen/Qwen3-1.7B` | FP32 on CPU | CPU quality step-up |
+| `qwen3-1.7b-cpu-int8-dynamic` | `Qwen/Qwen3-1.7B` | TorchAO INT8 activations + weights | experimental CPU benchmark |
+| `qwen3-1.7b-cpu-int8-weightonly` | `Qwen/Qwen3-1.7B` | TorchAO INT8 weights | experimental CPU benchmark |
 | `qwen3-4b-cuda-bf16` | `Qwen/Qwen3-4B` | BF16 | NVIDIA GPU around 10-12 GB VRAM |
 | `qwen3-8b-cuda-8bit` | `Qwen/Qwen3-8B` | bitsandbytes 8-bit | NVIDIA GPU around 12 GB VRAM |
 | `qwen3-8b-cuda-4bit` | `Qwen/Qwen3-8B` | bitsandbytes NF4 4-bit | NVIDIA GPU around 12 GB VRAM |
 
-These are test profiles, not guarantees. Actual fit depends on model revision, runtime overhead, context length, KV cache, GPU architecture and other processes.
+These are test profiles, not guarantees. Actual fit depends on model revision, runtime overhead, context length, KV cache, CPU/GPU architecture and other processes.
 
 ## Practical size guide
 
@@ -63,9 +65,31 @@ Roughly two bytes per parameter. These are the natural unquantized formats for m
 
 BF16 is attractive on hardware that supports it because it retains a wider numerical range than FP16. The `qwen3-4b-cuda-bf16` profile deliberately uses BF16 as a clean GPU baseline before quantization.
 
-## 8-bit quantization
+## CPU INT8 with TorchAO
 
-The v0.2 8-bit profile uses Hugging Face `BitsAndBytesConfig(load_in_8bit=True)`.
+The two experimental Qwen3-1.7B CPU profiles use Hugging Face `TorchAoConfig` and current TorchAO configuration objects:
+
+- `Int8DynamicActivationInt8WeightConfig()`
+- `Int8WeightOnlyConfig()`
+
+The dynamic profile quantizes activations at runtime and stores the targeted linear weights in INT8. This is the more interesting experiment when matrix multiplication is compute-bound.
+
+The weight-only profile reduces weight precision but keeps activation computation at higher precision. It can be more useful when model execution is limited by memory traffic rather than arithmetic throughput.
+
+Important limitations:
+
+- TorchAO is an additional dependency with its own PyTorch compatibility requirements
+- CPU acceleration depends on processor instruction support, operating system and available kernels
+- lower model memory does not guarantee higher tokens/second
+- quantization itself can add model-load cost
+- output quality may differ from the FP32 baseline
+- `torch.compile` can materially change results, but this project deliberately leaves it disabled for the first CPU INT8 comparison
+
+The right way to evaluate these profiles is therefore to compare the exact same deterministic cold/warm benchmark against `qwen3-1.7b-cpu`.
+
+## CUDA 8-bit quantization
+
+The v0.2 CUDA 8-bit profile uses Hugging Face `BitsAndBytesConfig(load_in_8bit=True)`.
 
 8-bit can reduce model-weight memory substantially relative to 16-bit and is a useful intermediate step when a model is close to fitting.
 
@@ -77,7 +101,7 @@ Limitations:
 - speed is not guaranteed to improve just because memory use drops
 - quality can change slightly
 
-## 4-bit quantization
+## CUDA 4-bit quantization
 
 The v0.2 4-bit profile uses bitsandbytes with:
 
@@ -101,9 +125,14 @@ The project prefers **on-load quantization of the official upstream model** for 
 
 ## Current project support boundary
 
-Upstream bitsandbytes supports more than one backend. `local_llm_stack` v0.2 intentionally supports its built-in 4/8-bit profiles on **CUDA only**.
+`local_llm_stack` currently treats quantization in two distinct groups:
 
-That boundary keeps the first implementation testable. CPU/XPU/other quantized backends may work upstream but are not yet claimed as supported by this repository.
+- **TorchAO CPU INT8** — experimental built-in profiles for Qwen3-1.7B
+- **bitsandbytes CUDA 4/8-bit** — built-in GPU profiles
+
+Other TorchAO, bitsandbytes, XPU, MPS, GPTQ, AWQ and community-specific quantization paths may work upstream but are not claimed as tested project configurations.
+
+This boundary is intentional: benchmark and document one path before expanding the compatibility matrix.
 
 ## CUDA-enabled PyTorch is separate from "having an NVIDIA GPU"
 
@@ -217,7 +246,7 @@ Use this order:
 2. **Task/modality**
 3. **RAM/VRAM**
 4. **Unquantized precision if it fits**
-5. **8-bit or 4-bit only when needed**
+5. **Quantization only when it solves a measured constraint**
 6. **Context headroom**
 7. **Benchmark on the actual machine**
 8. **Quality-test with real prompts**
@@ -234,6 +263,8 @@ to compare configurations consistently.
 
 - Hugging Face gated models: https://huggingface.co/docs/hub/models-gated
 - Transformers quantization: https://huggingface.co/docs/transformers/main/quantization
+- Transformers TorchAO: https://huggingface.co/docs/transformers/main/quantization/torchao
+- TorchAO inference workflows: https://docs.pytorch.org/ao/stable/workflows/inference.html
 - Transformers bitsandbytes: https://huggingface.co/docs/transformers/main/quantization/bitsandbytes
 - bitsandbytes docs: https://huggingface.co/docs/bitsandbytes/
 - PyTorch local install selector: https://pytorch.org/get-started/locally/
