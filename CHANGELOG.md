@@ -47,6 +47,7 @@ All notable project changes are documented here.
 
 - runtime profile validation now accepts `torchao-int8-dynamic` and `torchao-int8-weightonly`
 - CI now resolves every declared profile through the same runtime profile resolver used by `app.py` and `benchmark.py`, preventing bootstrap/runtime validation drift
+- Gradio 6 compatibility: `app.py` no longer passes the removed `type="messages"` argument to `gr.ChatInterface`; runtime history normalization remains compatible with Gradio 5 tuple/list histories and Gradio 6 message dictionaries
 
 ### Support boundary
 
