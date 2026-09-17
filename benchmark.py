@@ -121,6 +121,32 @@ def print_run(title, run):
         print(f"{key}: {value}")
 
 
+def optional_backend_versions(engine):
+    versions = {}
+
+    if engine.quantization.startswith("torchao-"):
+        try:
+            import torchao
+
+            versions["torchao"] = getattr(torchao, "__version__", "unknown")
+        except ImportError:
+            versions["torchao"] = "unavailable"
+
+    if engine.quantization in {"4bit", "8bit"}:
+        try:
+            import bitsandbytes
+
+            versions["bitsandbytes"] = getattr(
+                bitsandbytes,
+                "__version__",
+                "unknown",
+            )
+        except ImportError:
+            versions["bitsandbytes"] = "unavailable"
+
+    return versions
+
+
 def main():
     args = parse_args()
     settings = load_settings()
@@ -140,6 +166,7 @@ def main():
 
     prompt_tokens = engine.count_prompt_tokens(args.prompt)
     model_memory = engine.model_memory_bytes()
+    backend_versions = optional_backend_versions(engine)
 
     print("\nRunning cold generation pass...")
     cold_run, cold_text = benchmark_generation(engine, args.prompt, process)
@@ -188,6 +215,7 @@ def main():
         "quantization": engine.quantization,
         "python": platform.python_version(),
         "torch": torch.__version__,
+        **backend_versions,
         "load_seconds": round(load_seconds, 3),
         "prompt_tokens": prompt_tokens,
         "max_new_tokens": args.max_new_tokens,
@@ -223,13 +251,18 @@ def main():
         "quantization",
         "python",
         "torch",
-        "load_seconds",
-        "prompt_tokens",
-        "max_new_tokens",
-        "process_rss_before_gib",
-        "process_rss_after_load_gib",
-        "model_memory_footprint_gib",
     ]
+    common_keys.extend(backend_versions)
+    common_keys.extend(
+        [
+            "load_seconds",
+            "prompt_tokens",
+            "max_new_tokens",
+            "process_rss_before_gib",
+            "process_rss_after_load_gib",
+            "model_memory_footprint_gib",
+        ]
+    )
     if "cuda_device_name" in result:
         common_keys.append("cuda_device_name")
 
