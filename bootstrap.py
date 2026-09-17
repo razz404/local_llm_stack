@@ -156,7 +156,9 @@ def install_torch(index_url=None):
 def install_quantization_packages():
     requirements = BASE_DIR / "requirements-quantization.txt"
     print("\nInstalling optional quantization dependencies...")
-    run_pip(["-r", str(requirements)])
+    # Avoid letting bitsandbytes dependency resolution replace a deliberately
+    # selected CUDA PyTorch wheel with a default/CPU build.
+    run_pip(["--no-deps", "-r", str(requirements)])
 
 
 def verify_torch_for_profile(model_config):
