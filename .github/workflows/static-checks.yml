@@ -24,6 +24,9 @@ jobs:
         run: |
           python -m json.tool config.json > /dev/null
           python -m json.tool model_profiles.json > /dev/null
+          for file in benchmarks/reference/*.json; do
+            python -m json.tool "$file" > /dev/null
+          done
 
       - name: Validate model profiles
         run: python bootstrap.py --list-profiles
