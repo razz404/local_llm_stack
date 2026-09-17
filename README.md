@@ -11,7 +11,7 @@ The project is intentionally simple:
 - model files, Python packages, caches and runtime data can all live inside the cloned repository directory
 - after bootstrap, the application can run offline
 - the web UI listens on `127.0.0.1` only by default
-- v0.2 adds model profiles, optional 4/8-bit quantization and a local cold/warm benchmark
+- v0.2 adds model profiles, optional CPU/GPU quantization experiments and a local cold/warm benchmark
 
 The default profile is **Qwen3-0.6B**. It is deliberately small so the project can be tested on CPU-only Windows laptops with 16 GB RAM.
 
@@ -45,6 +45,8 @@ Built-in v0.2 profiles include:
 | --- | --- | --- |
 | `qwen3-0.6b-cpu` | Qwen3-0.6B | CPU baseline and development |
 | `qwen3-1.7b-cpu` | Qwen3-1.7B | Better CPU quality, slower |
+| `qwen3-1.7b-cpu-int8-dynamic` | Qwen3-1.7B | Experimental TorchAO A8W8 CPU test |
+| `qwen3-1.7b-cpu-int8-weightonly` | Qwen3-1.7B | Experimental TorchAO W8 CPU test |
 | `qwen3-4b-cuda-bf16` | Qwen3-4B | NVIDIA GPU BF16 baseline |
 | `qwen3-8b-cuda-8bit` | Qwen3-8B | NVIDIA GPU, bitsandbytes 8-bit |
 | `qwen3-8b-cuda-4bit` | Qwen3-8B | NVIDIA GPU, bitsandbytes 4-bit |
@@ -67,9 +69,27 @@ Get the current wheel command/index for the target machine from the official PyT
 
 ## Quantization
 
-The 4-bit and 8-bit profiles use Hugging Face Transformers with `BitsAndBytesConfig`.
+### CPU INT8 with TorchAO
 
-v0.2 intentionally treats quantization as an **optional CUDA profile**, not as the default path. The bootstrap installs `bitsandbytes` only when the selected profile requires it.
+Two experimental Qwen3-1.7B CPU profiles use Hugging Face `TorchAoConfig` with TorchAO:
+
+- `qwen3-1.7b-cpu-int8-dynamic` — `Int8DynamicActivationInt8WeightConfig`
+- `qwen3-1.7b-cpu-int8-weightonly` — `Int8WeightOnlyConfig`
+
+They reuse the same official Qwen3-1.7B model directory and quantize on load. `bootstrap.py` installs TorchAO only when one of these profiles is selected.
+
+Example:
+
+```cmd
+python bootstrap.py --profile qwen3-1.7b-cpu-int8-dynamic
+python benchmark.py --json benchmarks\qwen3-1.7b-cpu-int8-dynamic.json
+```
+
+These profiles are explicitly **experimental**. CPU kernel availability and speedup depend on PyTorch/TorchAO versions, processor capabilities, operating system and backend implementation. Lower memory use does not guarantee higher tokens/second. The project does not enable `torch.compile` automatically for these profiles, so the first comparison isolates on-load quantization from compiler-specific effects.
+
+### CUDA 4/8-bit with bitsandbytes
+
+The CUDA 4-bit and 8-bit profiles use Hugging Face Transformers with `BitsAndBytesConfig`.
 
 4-bit makes larger models practical in limited VRAM, but it is not free:
 
@@ -95,7 +115,7 @@ The benchmark reports the selected profile, model, device, dtype, quantization a
 - **cold** — the first real inference after model load
 - **warm** — the same prompt repeated immediately in the same process
 
-Both passes report time to first streamed text, total generation time, output tokens/second and process RAM. CUDA profiles also report peak allocated/reserved VRAM per pass. The output includes warm-vs-cold speedup and latency improvement metrics so first-touch paging or backend initialization is easier to distinguish from steady-state model speed.
+Both passes report time to first streamed text, total generation time, output tokens/second and process RAM. CUDA profiles also report peak allocated/reserved VRAM per pass. Quantized runs record the backend version (`torchao` or `bitsandbytes`) when available.
 
 Write a machine-readable result:
 
@@ -119,6 +139,7 @@ local_llm_stack/
 ├── model_profiles.json
 ├── requirements.txt
 ├── requirements-quantization.txt
+├── requirements-torchao.txt
 ├── local_ai/
 │   ├── __init__.py
 │   ├── runtime.py
