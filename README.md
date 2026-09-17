@@ -87,6 +87,10 @@ python benchmark.py --json benchmarks\qwen3-1.7b-cpu-int8-dynamic.json
 
 These profiles are explicitly **experimental**. CPU kernel availability and speedup depend on PyTorch/TorchAO versions, processor capabilities, operating system and backend implementation. Lower memory use does not guarantee higher tokens/second. The project does not enable `torch.compile` automatically for these profiles, so the first comparison isolates on-load quantization from compiler-specific effects.
 
+A verified Windows CPU comparison on a Dell Latitude 5340 showed exactly that trade-off: FP32 reached 3.078 warm tokens/s at 6.497 GiB RSS, TorchAO INT8 weight-only reduced warm RSS to 2.801 GiB but reached 1.230 tokens/s, and TorchAO dynamic INT8 reduced warm RSS to 2.668 GiB but reached only 0.432 tokens/s with 87.904 s warm TTFT. These numbers are machine-specific, not universal TorchAO expectations.
+
+See [Verified benchmark results](docs/VERIFIED_BENCHMARKS.md) for the full comparison and raw reference JSON files under `benchmarks/reference/`.
+
 ### CUDA 4/8-bit with bitsandbytes
 
 The CUDA 4-bit and 8-bit profiles use Hugging Face Transformers with `BitsAndBytesConfig`.
@@ -125,7 +129,7 @@ python benchmark.py --json benchmarks\my-machine.json
 
 Benchmark numbers are meaningful only when the **same prompt, generation settings, profile and hardware conditions** are compared.
 
-See [Benchmarking](docs/BENCHMARKING.md).
+See [Benchmarking](docs/BENCHMARKING.md) and [Verified benchmark results](docs/VERIFIED_BENCHMARKS.md).
 
 ## Repository layout
 
@@ -140,6 +144,8 @@ local_llm_stack/
 ├── requirements.txt
 ├── requirements-quantization.txt
 ├── requirements-torchao.txt
+├── benchmarks/
+│   └── reference/
 ├── local_ai/
 │   ├── __init__.py
 │   ├── runtime.py
@@ -154,6 +160,7 @@ local_llm_stack/
 │   ├── INSTALLATION.md
 │   ├── MODEL_SELECTION.md
 │   ├── BENCHMARKING.md
+│   ├── VERIFIED_BENCHMARKS.md
 │   ├── OFFLINE.md
 │   └── TROUBLESHOOTING.md
 ├── packages/
@@ -268,6 +275,7 @@ See [SECURITY.md](SECURITY.md).
 - [Architecture](docs/ARCHITECTURE.md)
 - [Choosing a local LLM](docs/MODEL_SELECTION.md)
 - [Benchmarking](docs/BENCHMARKING.md)
+- [Verified benchmark results](docs/VERIFIED_BENCHMARKS.md)
 - [Offline operation](docs/OFFLINE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Security](SECURITY.md)
