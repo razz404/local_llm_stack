@@ -8,6 +8,7 @@
 - enough free disk space for Python packages and the selected model
 - network access during initial package/model download
 - for CUDA profiles: a supported NVIDIA GPU, driver and CUDA-enabled PyTorch build
+- for experimental CPU INT8 profiles: a PyTorch/TorchAO combination supported by the installed TorchAO release
 
 ## CPU setup
 
@@ -48,6 +49,45 @@ python bootstrap.py --profile qwen3-1.7b-cpu
 
 The selection is written to `config.json`, so later runs of `app.py`, `smoke_test.py` and `benchmark.py` use the same model.
 
+## Experimental CPU INT8 setup
+
+Two Qwen3-1.7B profiles use Hugging Face `TorchAoConfig` with TorchAO:
+
+```text
+qwen3-1.7b-cpu-int8-dynamic
+qwen3-1.7b-cpu-int8-weightonly
+```
+
+Bootstrap installs `requirements-torchao.txt` only when one of these profiles is selected. TorchAO is installed with `--no-deps` after PyTorch so it does not silently replace the project-local PyTorch build.
+
+If Qwen3-1.7B is already downloaded, you can reuse the same model directory:
+
+```cmd
+python bootstrap.py ^
+  --profile qwen3-1.7b-cpu-int8-dynamic ^
+  --skip-model
+```
+
+Then benchmark:
+
+```cmd
+python benchmark.py --json benchmarks\qwen3-1.7b-cpu-int8-dynamic.json
+```
+
+Repeat with:
+
+```cmd
+python bootstrap.py ^
+  --profile qwen3-1.7b-cpu-int8-weightonly ^
+  --skip-model
+
+python benchmark.py --json benchmarks\qwen3-1.7b-cpu-int8-weightonly.json
+```
+
+These profiles are experimental. They intentionally do not enable `torch.compile` automatically. The first test therefore compares on-load INT8 quantization against the FP32 baseline without adding compiler/autotuning effects.
+
+If TorchAO fails to import, bootstrap stops with an explicit compatibility error. Do not assume that a lower-bit model is faster until the benchmark confirms it on the target CPU and operating system.
+
 ## CUDA setup
 
 CUDA profiles require a PyTorch build that actually exposes CUDA.
@@ -76,11 +116,13 @@ python bootstrap.py ^
 
 Bootstrap verifies `torch.cuda.is_available()` when the selected profile explicitly requires CUDA and stops with an actionable error if the installed build is CPU-only.
 
-## Quantization packages
+## Optional quantization packages
 
-`bitsandbytes` is optional. It is installed from `requirements-quantization.txt` only when the selected profile uses `4bit` or `8bit`.
+`bitsandbytes` is installed from `requirements-quantization.txt` only when the selected profile uses CUDA `4bit` or `8bit`.
 
-The project's supported v0.2 quantized path is CUDA. Upstream bitsandbytes supports additional backends, but those are not yet tested/supported here.
+`torchao` is installed from `requirements-torchao.txt` only when a `torchao-*` CPU profile is selected.
+
+Both optional backends are kept separate from the base requirements so ordinary CPU users do not install native/experimental quantization dependencies unnecessarily.
 
 ## Repository-local directories
 
