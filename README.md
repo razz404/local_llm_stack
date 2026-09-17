@@ -11,7 +11,7 @@ The project is intentionally simple:
 - model files, Python packages, caches and runtime data can all live inside the cloned repository directory
 - after bootstrap, the application can run offline
 - the web UI listens on `127.0.0.1` only by default
-- v0.2 adds model profiles, optional 4/8-bit quantization and a local benchmark
+- v0.2 adds model profiles, optional 4/8-bit quantization and a local cold/warm benchmark
 
 The default profile is **Qwen3-0.6B**. It is deliberately small so the project can be tested on CPU-only Windows laptops with 16 GB RAM.
 
@@ -90,7 +90,12 @@ Run:
 python benchmark.py
 ```
 
-The benchmark reports the selected profile, model, device, dtype, quantization, model load time, time to first streamed text, prompt/output token counts, approximate output tokens per second, process RAM and CUDA peak memory when available.
+The benchmark reports the selected profile, model, device, dtype, quantization and model-load time, then performs two deterministic generation passes:
+
+- **cold** — the first real inference after model load
+- **warm** — the same prompt repeated immediately in the same process
+
+Both passes report time to first streamed text, total generation time, output tokens/second and process RAM. CUDA profiles also report peak allocated/reserved VRAM per pass. The output includes warm-vs-cold speedup and latency improvement metrics so first-touch paging or backend initialization is easier to distinguish from steady-state model speed.
 
 Write a machine-readable result:
 
