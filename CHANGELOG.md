@@ -26,6 +26,9 @@ All notable project changes are documented here.
 - warm-vs-cold throughput and latency comparison metrics
 - per-pass process RSS and CUDA peak-memory measurements
 - quantization backend version recording for TorchAO/bitsandbytes benchmarks
+- verified Dell Latitude 5340 Qwen3-1.7B reference results for FP32, TorchAO INT8 weight-only and TorchAO dynamic INT8
+- committed raw benchmark JSON under `benchmarks/reference/`
+- `docs/VERIFIED_BENCHMARKS.md` for measured hardware-specific results and interpretation
 - model-profile, quantization, licensing and benchmarking documentation
 
 ### Changed
@@ -37,6 +40,8 @@ All notable project changes are documented here.
 - model runtime prints profile, device, dtype and quantization mode
 - benchmark JSON schema 2 stores separate `cold_run`, `warm_run` and `warm_vs_cold` objects while retaining the original top-level generation fields as cold-pass compatibility aliases
 - model-memory reporting now degrades gracefully to `null` if a quantized tensor subclass cannot expose the usual footprint API
+- CPU profile descriptions now distinguish the practical FP32 baseline from memory-saving or research-only TorchAO experiments based on verified Dell Latitude 5340 measurements
+- static checks now validate committed benchmark reference JSON
 
 ### Fixed
 
@@ -47,6 +52,7 @@ All notable project changes are documented here.
 
 - built-in bitsandbytes profiles are supported on CUDA only in v0.2
 - TorchAO CPU INT8 profiles are experimental and intended for benchmark-driven validation on the target machine
+- on the tested Dell Latitude 5340 Windows CPU configuration, TorchAO dynamic INT8 is not recommended for interactive use because measured throughput and TTFT were substantially worse than FP32
 - the first TorchAO comparison intentionally does not auto-enable `torch.compile`
 - other upstream TorchAO/bitsandbytes/XPU/MPS quantized backends are not yet claimed as tested configurations
 
