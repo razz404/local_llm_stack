@@ -1,0 +1,60 @@
+{
+  "qwen3-0.6b-cpu": {
+    "label": "Qwen3 0.6B - CPU baseline",
+    "id": "Qwen/Qwen3-0.6B",
+    "local_dir": "models/qwen3-0.6b",
+    "device": "cpu",
+    "dtype": "auto",
+    "quantization": "none",
+    "license": "Apache-2.0",
+    "gated": false,
+    "recommended_for": "Development, smoke tests and CPU-only laptops with 16 GB RAM."
+  },
+  "qwen3-1.7b-cpu": {
+    "label": "Qwen3 1.7B - CPU quality step-up",
+    "id": "Qwen/Qwen3-1.7B",
+    "local_dir": "models/qwen3-1.7b",
+    "device": "cpu",
+    "dtype": "auto",
+    "quantization": "none",
+    "license": "Apache-2.0",
+    "gated": false,
+    "recommended_for": "CPU-only laptops with 16 GB RAM when slower inference is acceptable."
+  },
+  "qwen3-4b-cuda-bf16": {
+    "label": "Qwen3 4B - CUDA BF16 baseline",
+    "id": "Qwen/Qwen3-4B",
+    "local_dir": "models/qwen3-4b",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "quantization": "none",
+    "license": "Apache-2.0",
+    "gated": false,
+    "recommended_for": "NVIDIA GPUs with roughly 10-12 GB VRAM and BF16 support."
+  },
+  "qwen3-8b-cuda-8bit": {
+    "label": "Qwen3 8B - CUDA 8-bit",
+    "id": "Qwen/Qwen3-8B",
+    "local_dir": "models/qwen3-8b",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "quantization": "8bit",
+    "license": "Apache-2.0",
+    "gated": false,
+    "recommended_for": "NVIDIA GPUs with around 12 GB VRAM where 8-bit fits with sufficient context headroom."
+  },
+  "qwen3-8b-cuda-4bit": {
+    "label": "Qwen3 8B - CUDA 4-bit",
+    "id": "Qwen/Qwen3-8B",
+    "local_dir": "models/qwen3-8b",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "quantization": "4bit",
+    "bnb_4bit_compute_dtype": "bfloat16",
+    "bnb_4bit_quant_type": "nf4",
+    "bnb_4bit_use_double_quant": true,
+    "license": "Apache-2.0",
+    "gated": false,
+    "recommended_for": "NVIDIA GPUs with around 12 GB VRAM; intended as the main larger-model test profile."
+  }
+}

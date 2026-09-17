@@ -1,39 +1,90 @@
 # Installation
 
-## Prerequisites
+`local_llm_stack` keeps its runtime inside the cloned repository. A Python virtual environment is optional, not required.
 
-The default setup needs:
+## Requirements
 
-- Git
 - Python 3.11 or newer
-- pip available through `python -m pip`
-- enough free disk space for Python packages, caches and the selected model
-- internet access during the initial bootstrap
+- enough free disk space for Python packages and the selected model
+- network access during initial package/model download
+- for CUDA profiles: a supported NVIDIA GPU, driver and CUDA-enabled PyTorch build
 
-The project was initially developed on Windows with Python 3.13 and a CPU-only PyTorch installation. Other environments may work, but should be treated as separate test targets.
-
-## Windows: recommended repository-local setup
-
-Clone the repository:
+## CPU setup
 
 ```cmd
 git clone https://github.com/razz404/local_llm_stack.git
 cd local_llm_stack
-```
-
-Run:
-
-```cmd
 python bootstrap.py
 ```
 
-or:
+The default `qwen3-0.6b-cpu` profile is intended to work on CPU-only machines.
+
+Test:
 
 ```cmd
-scripts\bootstrap.cmd
+python smoke_test.py
+python benchmark.py
 ```
 
-The bootstrap script creates and uses these local directories:
+Start the UI:
+
+```cmd
+python app.py
+```
+
+## Choosing a profile
+
+List profiles without installing anything:
+
+```cmd
+python bootstrap.py --list-profiles
+```
+
+Select one:
+
+```cmd
+python bootstrap.py --profile qwen3-1.7b-cpu
+```
+
+The selection is written to `config.json`, so later runs of `app.py`, `smoke_test.py` and `benchmark.py` use the same model.
+
+## CUDA setup
+
+CUDA profiles require a PyTorch build that actually exposes CUDA.
+
+Because the correct PyTorch wheel channel depends on the current PyTorch release, supported CUDA versions and the target driver, the repository does not guess or pin a CUDA channel.
+
+1. Use the official PyTorch installation selector for the target machine.
+2. Copy the appropriate wheel index URL.
+3. Bootstrap with that URL.
+
+Example:
+
+```cmd
+python bootstrap.py ^
+  --profile qwen3-4b-cuda-bf16 ^
+  --torch-index-url <PYTORCH_CUDA_INDEX_URL>
+```
+
+For 4/8-bit:
+
+```cmd
+python bootstrap.py ^
+  --profile qwen3-8b-cuda-4bit ^
+  --torch-index-url <PYTORCH_CUDA_INDEX_URL>
+```
+
+Bootstrap verifies `torch.cuda.is_available()` when the selected profile explicitly requires CUDA and stops with an actionable error if the installed build is CPU-only.
+
+## Quantization packages
+
+`bitsandbytes` is optional. It is installed from `requirements-quantization.txt` only when the selected profile uses `4bit` or `8bit`.
+
+The project's supported v0.2 quantized path is CUDA. Upstream bitsandbytes supports additional backends, but those are not yet tested/supported here.
+
+## Repository-local directories
+
+Bootstrap creates:
 
 ```text
 packages/
@@ -45,117 +96,45 @@ logs/
 temp/
 ```
 
-It then runs pip with `--target packages`, so no venv is needed.
+They are all local to the repository and runtime directories are excluded from version control as appropriate.
 
-### Why not require venv?
+## Group Policy / WinError 1260
 
-Some managed Windows systems allow Python and pip but block creation or execution of a virtual environment through Group Policy. A typical symptom is:
-
-```text
-Error: [WinError 1260] This program is blocked by group policy
-```
-
-The repository-local `packages/` approach avoids creating another Python executable and still keeps third-party modules inside the project directory.
-
-## Start the application
-
-```cmd
-python app.py
-```
-
-or:
-
-```cmd
-scripts\run.cmd
-```
-
-By default the UI listens only on:
-
-```text
-127.0.0.1:7860
-```
-
-## Verify with a terminal-only test
-
-```cmd
-python smoke_test.py
-```
-
-This is useful for separating model/runtime problems from Gradio/UI problems.
-
-## Bootstrap options
-
-Install/update packages but do not download the model:
-
-```cmd
-python bootstrap.py --skip-model
-```
-
-Download/update the configured model without reinstalling packages:
-
-```cmd
-python bootstrap.py --skip-packages
-```
-
-## Optional traditional virtual environment
-
-On an unmanaged computer, a normal venv can also be used:
+A managed Windows environment may block:
 
 ```cmd
 python -m venv .venv
-.venv\Scripts\activate
-python -m pip install -r requirements.txt
-python bootstrap.py --skip-packages
-python app.py
 ```
 
-The application still supports the repository-local `packages/` directory; if it is empty, normal interpreter/venv packages remain available through the rest of `sys.path`.
-
-## Model selection
-
-The default model is configured in `config.json`:
-
-```json
-"model": {
-  "id": "Qwen/Qwen3-0.6B",
-  "local_dir": "models/qwen3-0.6b",
-  "device": "auto",
-  "enable_thinking": false
-}
-```
-
-To use another Transformers-compatible causal language model:
-
-1. change `model.id`
-2. change `model.local_dir`
-3. run `python bootstrap.py --skip-packages`
-4. start `python app.py`
-
-Different models can require different tokenizer/template options or significantly more RAM/VRAM. The current stack is deliberately optimized for the small Qwen3 reference model, not every model on Hugging Face.
-
-## CPU versus GPU
-
-`device: "auto"` checks available acceleration at runtime:
-
-1. CUDA
-2. Apple MPS
-3. CPU
-
-The default `pip` installation installs the PyTorch build provided for your platform by the configured package index. If you need a particular NVIDIA/CUDA build, install the appropriate PyTorch package into `packages/` or a venv according to PyTorch's platform-specific instructions, then verify:
-
-```cmd
-python -c "import sys; sys.path.insert(0, 'packages'); import torch; print(torch.__version__); print(torch.cuda.is_available())"
-```
-
-## Moving the clone
-
-Project paths are relative to the repository root. You can therefore move or clone the project into another directory without editing hard-coded `D:\...` paths.
-
-For example both of these are valid:
+The default bootstrap does not require venv. It uses:
 
 ```text
-D:\projekt\local-ai\
-C:\Users\alice\source\local_llm_stack\
+pip install --target packages/
 ```
 
-The only exception is an explicitly absolute `model.local_dir` value in `config.json`.
+and the application adds that folder to `sys.path` before importing third-party packages.
+
+## Gated Hugging Face models
+
+The built-in profiles are intended to be zero-friction official Qwen profiles. If you create a profile for a gated model, bootstrap may fail until you authenticate and accept the upstream terms.
+
+Typical Hugging Face authentication:
+
+```cmd
+hf auth login
+```
+
+Never put tokens in `config.json`, `model_profiles.json`, batch files or Git.
+
+## Advanced bootstrap switches
+
+```text
+--list-profiles
+--profile NAME
+--torch-index-url URL
+--skip-packages
+--skip-torch
+--skip-model
+```
+
+`--skip-*` switches are useful when iterating on an already prepared repository, but they assume the skipped component is already correct.

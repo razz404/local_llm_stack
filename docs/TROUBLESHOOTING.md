@@ -2,150 +2,88 @@
 
 ## `WinError 1260` when creating a virtual environment
 
-Example:
+On managed Windows systems this can be caused by Group Policy.
 
-```text
-Error: [WinError 1260] This program is blocked by group policy
-```
-
-This usually means Windows application control or Group Policy blocks part of venv creation/execution. It is not necessarily a PowerShell problem.
-
-Use the repository-local installation instead:
+You do not need a venv for this project. Use:
 
 ```cmd
 python bootstrap.py
 ```
 
-The bootstrap script installs dependencies into `packages/` and does not require a new `python.exe` inside `.venv/`.
+The bootstrap installs packages into the local `packages/` directory with pip `--target`.
 
-## `ModuleNotFoundError`
+## PyTorch shows `+cpu` / `CUDA: False`
 
-First confirm that bootstrap completed:
-
-```cmd
-python bootstrap.py --skip-model
-```
-
-Then verify imports explicitly:
+Check:
 
 ```cmd
-python -c "import sys; sys.path.insert(0, 'packages'); import torch, transformers, gradio; print(torch.__version__); print(transformers.__version__); print(gradio.__version__)"
+python -c "import sys; sys.path.insert(0, r'packages'); import torch; print(torch.__version__); print(torch.cuda.is_available())"
 ```
 
-If packages are partially installed, rerun bootstrap. It uses pip with `--upgrade --target packages`.
+A CUDA profile requires `torch.cuda.is_available()` to be `True`.
+
+If it is `False` on a machine with an NVIDIA GPU, use the official PyTorch installation selector and re-run bootstrap with the recommended CUDA wheel index:
+
+```cmd
+python bootstrap.py ^
+  --profile qwen3-4b-cuda-bf16 ^
+  --torch-index-url <PYTORCH_CUDA_INDEX_URL>
+```
+
+Do not assume the correct CUDA wheel URL from another machine or an old guide.
+
+## CUDA profile fails during bootstrap
+
+`bootstrap.py` intentionally validates CUDA before downloading a large GPU-targeted model. Verify the NVIDIA driver, GPU visibility and CUDA-enabled PyTorch build, then re-run bootstrap.
+
+## `bitsandbytes` import or load failure
+
+The built-in 4-bit and 8-bit profiles require the optional quantization packages. Re-run bootstrap with the quantized profile and the correct PyTorch CUDA index for the machine.
+
+v0.2 supports the built-in bitsandbytes profiles on CUDA only.
+
+## Out of memory on GPU
+
+Runtime memory also includes KV cache, non-quantized layers, quantization metadata/scales, temporary tensors, CUDA allocator reservations and other GPU processes.
+
+Try a smaller profile, 8-bit, then 4-bit, reduce context/history and close other GPU workloads. Use `python benchmark.py` to inspect CUDA peaks.
+
+## BF16 profile rejected
+
+If the GPU does not report BF16 support, override the profile with `"dtype": "float16"` in `config.json` or choose another profile.
 
 ## Model directory not found
-
-Error:
-
-```text
-Model directory not found ... Run 'python bootstrap.py' first.
-```
 
 Run:
 
 ```cmd
-python bootstrap.py --skip-packages
+python bootstrap.py --skip-packages --skip-torch
 ```
 
-Also confirm that `config.json` points to the same model directory that bootstrap downloads.
+This downloads the model selected by `config.json` without reinstalling local packages.
 
-## Model loading is very slow
+## Hugging Face returns 401/403 or asks for access
 
-CPU-only model loading can take a noticeable amount of time. On the initial test laptop Qwen3-0.6B loaded successfully on CPU, but model loading was much slower than on a GPU system.
-
-Check the active device shown during startup:
-
-```text
-Device: cpu
-```
-
-You can also verify PyTorch directly:
+The model may be gated or require accepted terms. Check the model page and, if appropriate:
 
 ```cmd
-python -c "import sys; sys.path.insert(0, 'packages'); import torch; print(torch.__version__); print('CUDA:', torch.cuda.is_available())"
+hf auth login
 ```
 
-If CUDA prints `False`, the current PyTorch runtime will use CPU.
+Do not commit tokens to the repository.
 
-## `CUDA: False` even though the computer has an NVIDIA GPU
+## Model is extremely slow on CPU
 
-The installed PyTorch build may not include the CUDA runtime required for that system. GPU-enabled PyTorch installation is platform-specific.
+Use `python benchmark.py` to establish a baseline. For a 16 GB CPU laptop, start with `qwen3-0.6b-cpu` and then try `qwen3-1.7b-cpu` only if latency is acceptable.
 
-Install the appropriate PyTorch build into `packages/` or a venv, then rerun the check above. The application's `device: auto` setting can only use CUDA when `torch.cuda.is_available()` is true.
+## Duplicate target-directory warnings from pip
 
-## Gradio page does not open
+Repeated `pip --target packages/` runs may report existing directories. Bootstrap uses `--upgrade`. If the local tree becomes inconsistent, delete only the project `packages/` directory and bootstrap again.
 
-Look at the terminal output for the local address. The default is:
+## Port 7860 already in use
 
-```text
-http://127.0.0.1:7860
-```
+Change the `ui.port` value in `config.json`.
 
-Try opening that address manually.
+## Runtime unexpectedly accesses the network
 
-If the port is already used, change:
-
-```json
-"port": 7860
-```
-
-in `config.json`, for example to `7861`.
-
-## I can reach the UI only on the same computer
-
-That is intentional. The default host is:
-
-```text
-127.0.0.1
-```
-
-which is loopback-only.
-
-Do not change it to `0.0.0.0` unless you explicitly intend to expose the application to other network interfaces and understand the security implications.
-
-## The application tries to access the internet at runtime
-
-The default runtime sets:
-
-```text
-TRANSFORMERS_OFFLINE=1
-HF_HUB_OFFLINE=1
-```
-
-and uses `local_files_only=True` when loading the model and tokenizer.
-
-If you need a hard guarantee, enforce outbound network blocking with the operating system/firewall as described in `OFFLINE.md`.
-
-## Strange or low-quality answers
-
-Qwen3-0.6B is intentionally small. It is a development/reference model for this project, not a replacement for a large hosted model.
-
-Try adjusting in `config.json`:
-
-```json
-"max_new_tokens": 300,
-"temperature": 0.7,
-"top_p": 0.9
-```
-
-For deterministic testing, set:
-
-```json
-"do_sample": false
-```
-
-## Garbled chat history after changing Gradio versions
-
-The application explicitly uses Gradio's message format and also contains compatibility handling for older tuple/list history. If a future Gradio version changes the API, test with `smoke_test.py` first. If the smoke test works but the UI fails, the problem is likely isolated to the Gradio layer.
-
-## Reinstall from scratch
-
-Because runtime state is local, a clean rebuild is simple:
-
-1. close the application
-2. remove `packages/` and optionally `cache/`
-3. keep or remove `models/` depending on whether you want to redownload model weights
-4. run `python bootstrap.py`
-
-Do not delete `models/` unless you are prepared to download the model again.
+`app.py`, `smoke_test.py` and `benchmark.py` enable offline mode before loading model libraries, and model loading uses `local_files_only=True`. Bootstrap is intentionally online when downloads are required.

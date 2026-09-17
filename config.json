@@ -1,8 +1,6 @@
 {
   "model": {
-    "id": "Qwen/Qwen3-0.6B",
-    "local_dir": "models/qwen3-0.6b",
-    "device": "auto",
+    "profile": "qwen3-0.6b-cpu",
     "enable_thinking": false
   },
   "generation": {
@@ -16,7 +14,7 @@
   },
   "ui": {
     "title": "Local AI",
-    "description": "Qwen3-0.6B – körs lokalt med Python, Transformers och PyTorch",
+    "description": "Lokal LLM via Python, Transformers och PyTorch",
     "host": "127.0.0.1",
     "port": 7860,
     "open_browser": true

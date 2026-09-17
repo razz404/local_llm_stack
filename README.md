@@ -1,6 +1,6 @@
 # local_llm_stack
 
-A small, Python-first stack for running a local language model with **PyTorch + Hugging Face Transformers + Gradio**.
+A small, Python-first stack for running local language models with **PyTorch + Hugging Face Transformers + Gradio**.
 
 The project is intentionally simple:
 
@@ -11,85 +11,137 @@ The project is intentionally simple:
 - model files, Python packages, caches and runtime data can all live inside the cloned repository directory
 - after bootstrap, the application can run offline
 - the web UI listens on `127.0.0.1` only by default
+- v0.2 adds model profiles, optional 4/8-bit quantization and a local benchmark
 
-The initial reference model is **Qwen3-0.6B**. It is small enough for experimenting on CPU-only Windows machines while still providing a useful local chat interface.
+The default profile is **Qwen3-0.6B**. It is deliberately small so the project can be tested on CPU-only Windows laptops with 16 GB RAM.
 
-> This repository does **not** include model weights. `bootstrap.py` downloads them from the upstream model repository on first setup.
+> Model weights are not included in this repository. `bootstrap.py` downloads the selected model from its upstream Hugging Face repository.
 
 ## Quick start
 
-### 1. Clone
+### CPU / default profile
 
 ```cmd
 git clone https://github.com/razz404/local_llm_stack.git
 cd local_llm_stack
-```
 
-### 2. Bootstrap the local environment
-
-```cmd
 python bootstrap.py
-```
-
-The bootstrap script installs Python dependencies into the repository-local `packages/` directory and downloads the configured model into `models/`.
-
-No virtual environment is required. This mode is useful on managed Windows computers where creating a venv may be blocked by Group Policy.
-
-### 3. Start Local AI
-
-```cmd
+python smoke_test.py
+python benchmark.py
 python app.py
 ```
 
-or on Windows:
+No virtual environment is required. Dependencies are installed into the repository-local `packages/` directory. This is useful on managed Windows computers where creating a venv may be blocked by Group Policy.
+
+### See available model profiles
 
 ```cmd
-scripts\run.cmd
+python bootstrap.py --list-profiles
 ```
 
-The browser should open at:
+Built-in v0.2 profiles include:
 
-```text
-http://127.0.0.1:7860
+| Profile | Model | Intended use |
+| --- | --- | --- |
+| `qwen3-0.6b-cpu` | Qwen3-0.6B | CPU baseline and development |
+| `qwen3-1.7b-cpu` | Qwen3-1.7B | Better CPU quality, slower |
+| `qwen3-4b-cuda-bf16` | Qwen3-4B | NVIDIA GPU BF16 baseline |
+| `qwen3-8b-cuda-8bit` | Qwen3-8B | NVIDIA GPU, bitsandbytes 8-bit |
+| `qwen3-8b-cuda-4bit` | Qwen3-8B | NVIDIA GPU, bitsandbytes 4-bit |
+
+Select a profile during bootstrap:
+
+```cmd
+python bootstrap.py --profile qwen3-1.7b-cpu
 ```
+
+For CUDA profiles, use a CUDA-enabled PyTorch build suitable for the machine. The project deliberately does not hard-code one CUDA wheel channel because PyTorch/CUDA compatibility changes over time:
+
+```cmd
+python bootstrap.py ^
+  --profile qwen3-8b-cuda-4bit ^
+  --torch-index-url <PYTORCH_CUDA_INDEX_URL>
+```
+
+Get the current wheel command/index for the target machine from the official PyTorch installation selector.
+
+## Quantization
+
+The 4-bit and 8-bit profiles use Hugging Face Transformers with `BitsAndBytesConfig`.
+
+v0.2 intentionally treats quantization as an **optional CUDA profile**, not as the default path. The bootstrap installs `bitsandbytes` only when the selected profile requires it.
+
+4-bit makes larger models practical in limited VRAM, but it is not free:
+
+- quality can change compared with BF16/FP16
+- real memory use is higher than the raw bits-per-parameter estimate
+- long context consumes additional VRAM through KV cache
+- backend and hardware compatibility matter
+- community-produced quantized checkpoints are separate supply-chain artefacts
+- quantization does not remove the original model licence or terms
+
+See [Choosing a local LLM](docs/MODEL_SELECTION.md).
+
+## Benchmark
+
+Run:
+
+```cmd
+python benchmark.py
+```
+
+The benchmark reports the selected profile, model, device, dtype, quantization, model load time, time to first streamed text, prompt/output token counts, approximate output tokens per second, process RAM and CUDA peak memory when available.
+
+Write a machine-readable result:
+
+```cmd
+python benchmark.py --json benchmarks\my-machine.json
+```
+
+Benchmark numbers are meaningful only when the **same prompt, generation settings, profile and hardware conditions** are compared.
+
+See [Benchmarking](docs/BENCHMARKING.md).
 
 ## Repository layout
 
 ```text
 local_llm_stack/
-├── app.py                  # Gradio chat application
-├── bootstrap.py            # Installs dependencies + downloads model
-├── smoke_test.py           # Minimal terminal inference test
-├── config.json             # Model, generation and UI settings
-├── requirements.txt        # Python dependencies
+├── app.py
+├── bootstrap.py
+├── benchmark.py
+├── smoke_test.py
+├── config.json
+├── model_profiles.json
+├── requirements.txt
+├── requirements-quantization.txt
 ├── local_ai/
 │   ├── __init__.py
-│   ├── runtime.py           # Local paths, caches and offline environment
-│   ├── settings.py          # Config loader
-│   └── engine.py            # Model loading and generation
+│   ├── runtime.py
+│   ├── profiles.py
+│   ├── settings.py
+│   └── engine.py
 ├── scripts/
 │   ├── bootstrap.cmd
 │   └── run.cmd
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── INSTALLATION.md
-│   ├── MODEL_SELECTION.md   # Choosing models, quantization and licence/access notes
+│   ├── MODEL_SELECTION.md
+│   ├── BENCHMARKING.md
 │   ├── OFFLINE.md
 │   └── TROUBLESHOOTING.md
-├── packages/               # Created locally; ignored by Git
-├── models/                 # Created locally; ignored by Git
-├── cache/                  # Created locally; ignored by Git
-├── chats/                  # Reserved for future local chat persistence
-├── data/                   # Reserved for future local documents/RAG
-├── logs/                   # Local logs
-└── temp/                   # Local temporary files
+├── packages/
+├── models/
+├── cache/
+├── chats/
+├── data/
+├── logs/
+└── temp/
 ```
 
 ## How local is it?
 
-After `python bootstrap.py` has completed, the runtime is configured to use local directories for Hugging Face, Torch, pip and temporary data. `app.py` also enables Hugging Face/Transformers offline mode.
-
-At runtime the intended data flow is:
+After bootstrap, runtime paths are redirected into the repository and Hugging Face/Transformers offline mode is enabled when `app.py`, `smoke_test.py` or `benchmark.py` starts.
 
 ```text
 Browser on localhost
@@ -104,133 +156,92 @@ Python application
 Transformers + PyTorch
         |
         v
-models/qwen3-0.6b/
+local models/
 ```
 
 There is no external inference API in the default configuration.
 
-See [docs/OFFLINE.md](docs/OFFLINE.md) for the exact boundary and verification steps.
+Bootstrap itself requires network access when packages or model files must be downloaded. Gated models may also require a Hugging Face account and authentication.
 
-## Choosing an LLM
-
-Do not choose a model only by parameter count. Local inference is constrained by available system RAM, GPU VRAM, precision, context length, runtime overhead, licence terms and Hugging Face access requirements.
-
-The project keeps **Qwen3-0.6B** as the default because it is small, works well as a CPU development model, is available directly through Transformers, and its official Hugging Face repository uses Apache-2.0.
-
-A practical starting point is:
-
-| Hardware | First model to try |
-| --- | --- |
-| CPU-only laptop, 16 GB RAM | Qwen3-0.6B |
-| CPU-only laptop, 16 GB RAM, slower inference acceptable | Qwen3-1.7B |
-| NVIDIA GPU with around 8-12 GB VRAM | Qwen3-4B in BF16/FP16 where it fits |
-| NVIDIA GPU with around 12 GB VRAM | Qwen3-8B in 4-bit is an interesting target |
-
-These are starting points, not guarantees. Context length, KV cache and runtime overhead also consume memory.
-
-Quantization can make larger models practical, but 8-bit and especially 4-bit loading add trade-offs around quality, hardware/backend compatibility, dependencies and model provenance. A quantized checkpoint also remains subject to the original model's licence and terms.
-
-Hugging Face is a hosting platform, not a single model licence. Some models are openly downloadable under permissive licences; others use custom terms or are gated and require a Hugging Face account, an access request, authentication, or acceptance of additional conditions. The project's MIT licence applies to this repository's code, **not** to model weights downloaded from Hugging Face.
-
-Read the full guide before changing the default model:
-
-**[Choosing a local LLM: hardware, quantization, Hugging Face access and licences](docs/MODEL_SELECTION.md)**
+See [Offline operation](docs/OFFLINE.md).
 
 ## Configuration
 
-Edit `config.json` to change the local model path, generation settings, system prompt or UI port.
+`config.json` selects a model profile:
+
+```json
+{
+  "model": {
+    "profile": "qwen3-0.6b-cpu",
+    "enable_thinking": false
+  }
+}
+```
+
+Profile details live in `model_profiles.json`. Explicit fields added under `config.json -> model` override profile defaults, which is useful for experiments.
 
 Example:
 
 ```json
 {
   "model": {
-    "id": "Qwen/Qwen3-0.6B",
-    "local_dir": "models/qwen3-0.6b",
-    "device": "auto",
+    "profile": "qwen3-4b-cuda-bf16",
+    "dtype": "float16",
     "enable_thinking": false
-  },
-  "generation": {
-    "max_new_tokens": 300,
-    "temperature": 0.7,
-    "top_p": 0.9,
-    "do_sample": true
   }
 }
 ```
 
-If you change `model.id` or `model.local_dir`, run `python bootstrap.py` again to download that model.
+Prefer adding a reusable profile to `model_profiles.json` instead of accumulating machine-specific overrides.
 
-## CPU and GPU
+## Model licences and Hugging Face access
 
-`device: "auto"` selects CUDA when PyTorch reports CUDA as available; otherwise it uses CPU.
+The repository code is MIT licensed. Downloaded models are not.
 
-The first development system used a CPU-only PyTorch build and successfully ran Qwen3-0.6B. CPU model loading and generation can be slow, especially on managed business laptops. Streaming makes the UI responsive as soon as tokens are generated, but does not make the model itself compute faster.
+Before selecting another model, check:
 
-## Verify the installation
+- the upstream model licence
+- whether commercial or redistribution rights meet your use case
+- whether the model is gated
+- whether an access agreement or account is required
+- whether a community checkpoint preserves upstream notices and provenance
+- whether custom model code is required
 
-Run the terminal smoke test:
+The built-in Qwen3 profiles use official upstream repositories and record their licence metadata for convenience, but the upstream model card remains authoritative.
 
-```cmd
-python smoke_test.py
-```
-
-It loads the configured model strictly from local files and asks it for a short Swedish response.
+See [Choosing a local LLM](docs/MODEL_SELECTION.md).
 
 ## Managed Windows / Group Policy environments
 
-If this fails:
+If:
 
 ```cmd
 python -m venv .venv
 ```
 
-with an error such as `WinError 1260` or a Group Policy restriction, you can still use this project. The default bootstrap intentionally avoids venv and installs dependencies with pip's `--target` option into:
+fails with `WinError 1260` or a Group Policy restriction, that does not block this project. `bootstrap.py` uses pip `--target` and keeps dependencies in `packages/`.
 
-```text
-packages/
-```
-
-The application prepends that directory to `sys.path` before importing third-party packages.
-
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) and [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+See [Installation](docs/INSTALLATION.md) and [Troubleshooting](docs/TROUBLESHOOTING.md).
 
 ## Security defaults
 
-The default UI configuration is deliberately conservative:
-
-- host: `127.0.0.1`
+- UI host: `127.0.0.1`
 - Gradio public sharing: disabled
-- Transformers/Hugging Face offline mode: enabled during runtime
-- no model weights or runtime data committed to Git
+- offline mode at runtime
+- model weights and runtime data are excluded from Git
+- no Hugging Face token is stored in project configuration
+- `trust_remote_code=True` is not enabled
 
-This is a convenience boundary, not a sandbox. A Python process and downloaded model files should still be treated according to the trust level of their source.
+This is a convenience boundary, not a sandbox. Models and Python dependencies remain software supply-chain inputs.
 
 See [SECURITY.md](SECURITY.md).
-
-## Current scope
-
-Version 0.1 provides:
-
-- repository-local Python dependencies
-- repository-local model storage
-- repository-local caches
-- offline model loading after bootstrap
-- Qwen3-0.6B reference configuration
-- CPU/CUDA auto-selection
-- Gradio chat UI
-- streaming output
-- configurable system prompt and generation settings
-- terminal smoke test
-- documented guidance for model selection, quantization, Hugging Face gating and model-specific licences/terms
-
-Planned areas include chat persistence, interactive model selection, benchmark tooling, quantized model loading, document ingestion/RAG and optional local tools. These are intentionally not part of the first minimal stack.
 
 ## Documentation
 
 - [Installation](docs/INSTALLATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Choosing a model](docs/MODEL_SELECTION.md)
+- [Choosing a local LLM](docs/MODEL_SELECTION.md)
+- [Benchmarking](docs/BENCHMARKING.md)
 - [Offline operation](docs/OFFLINE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Security](SECURITY.md)

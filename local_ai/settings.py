@@ -1,5 +1,6 @@
 import json
 
+from .profiles import resolve_model_config
 from .runtime import BASE_DIR
 
 
@@ -17,4 +18,5 @@ def load_settings():
             "config.json is missing required section(s): " + ", ".join(sorted(missing))
         )
 
+    settings["model"] = resolve_model_config(settings)
     return settings

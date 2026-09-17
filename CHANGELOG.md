@@ -2,16 +2,35 @@
 
 All notable project changes are documented here.
 
-## Unreleased
+## 0.2.0 - 2026-09-17
 
 ### Added
 
-- model-selection guide covering hardware sizing, context and memory headroom
-- guidance for FP32, FP16/BF16, 8-bit and 4-bit model loading
-- quantization caveats covering quality, dependencies, provenance and redistribution
-- Hugging Face gated-model and authentication guidance
-- notes on model-specific licences and terms, including the distinction between the project's MIT licence and downloaded model weights
-- practical Qwen3 and Gemma examples for local testing
+- reusable `model_profiles.json`
+- built-in Qwen3 0.6B, 1.7B, 4B BF16, 8B 8-bit and 8B 4-bit profiles
+- `bootstrap.py --list-profiles`
+- `bootstrap.py --profile NAME`
+- optional `--torch-index-url` for CUDA-enabled PyTorch wheels
+- automatic profile resolution in runtime settings
+- dtype selection (`auto`, FP32, FP16, BF16)
+- optional bitsandbytes 4-bit and 8-bit loading
+- NF4/double-quantization settings for the Qwen3-8B 4-bit profile
+- explicit CUDA validation for GPU profiles
+- `benchmark.py` with load time, streamed latency, token throughput, RAM and CUDA memory metrics
+- JSON benchmark output
+- model-profile, quantization, licensing and benchmarking documentation
+
+### Changed
+
+- PyTorch installation is handled explicitly by `bootstrap.py`
+- quantization dependencies are optional
+- default `config.json` now selects a named model profile
+- model runtime prints profile, device, dtype and quantization mode
+
+### Support boundary
+
+- built-in bitsandbytes profiles are supported on CUDA only in v0.2
+- other upstream bitsandbytes backends are not yet claimed as tested configurations
 
 ## 0.1.0 - 2026-09-16
 

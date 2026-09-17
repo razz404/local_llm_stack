@@ -1,7 +1,7 @@
-# Keep version ranges broad enough for current Python releases while preserving the APIs used by this project.
-torch>=2.6,<3.0
+# Base runtime dependencies. PyTorch is installed separately by bootstrap.py so GPU users can select the correct wheel index.
 transformers>=4.51,<6.0
 accelerate>=1.0,<2.0
 gradio>=5.0,<7.0
 huggingface_hub>=0.30,<2.0
 safetensors>=0.5,<1.0
+psutil>=6.0,<8.0

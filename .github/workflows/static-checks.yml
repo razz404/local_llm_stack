@@ -18,7 +18,12 @@ jobs:
           python-version: "3.13"
 
       - name: Compile Python sources
-        run: python -m compileall -q app.py bootstrap.py smoke_test.py local_ai
+        run: python -m compileall -q app.py bootstrap.py benchmark.py smoke_test.py local_ai
 
-      - name: Validate config.json
-        run: python -m json.tool config.json > /dev/null
+      - name: Validate JSON
+        run: |
+          python -m json.tool config.json > /dev/null
+          python -m json.tool model_profiles.json > /dev/null
+
+      - name: Validate model profiles
+        run: python bootstrap.py --list-profiles

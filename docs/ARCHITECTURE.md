@@ -2,178 +2,146 @@
 
 ## Design goals
 
-The stack is intentionally built around a few constraints:
+`local_llm_stack` is intentionally built around a few constraints:
 
-1. Python is the application layer and the model is invoked directly from Python.
+1. Python is the application layer and invokes the model directly.
 2. A separate Ollama or llama.cpp server is not required.
-3. A clone can keep its dependencies, model files, caches and runtime data inside its own directory.
-4. Runtime model loading works without internet access after bootstrap.
-5. The first implementation should stay small enough to understand and modify.
+3. Dependencies, model files, caches and runtime data can remain inside the cloned repository.
+4. Runtime inference works offline after bootstrap.
+5. Model/hardware experiments should be explicit, repeatable and documented.
+6. The code should stay small enough to understand and modify.
 
 ## Components
 
 ```text
-+-------------------------+
-| Browser                 |
-| http://127.0.0.1:7860   |
-+------------+------------+
-             |
-             v
-+-------------------------+
-| Gradio ChatInterface    |
-| app.py                  |
-+------------+------------+
-             |
-             v
-+-------------------------+
-| LocalLLM                |
-| local_ai/engine.py      |
-+------------+------------+
-             |
-             v
-+-------------------------+
-| Transformers + PyTorch  |
-| packages/               |
-+------------+------------+
-             |
-             v
-+-------------------------+
-| Local model files       |
-| models/qwen3-0.6b/      |
-+-------------------------+
+                     config.json
+                         |
+                         v
+                model_profiles.json
+                         |
+                         v
++----------------+   +----------------------+   +----------------------+
+| Browser/CLI    |-->| app.py / benchmark.py|-->| local_ai/settings.py |
++----------------+   +----------------------+   +----------+-----------+
+                                                         |
+                                                         v
+                                               +----------------------+
+                                               | local_ai/engine.py   |
+                                               | LocalLLM             |
+                                               +----------+-----------+
+                                                          |
+                              +---------------------------+--------------------+
+                              |                                                |
+                              v                                                v
+                    PyTorch + Transformers                           BitsAndBytesConfig
+                              |                                      (optional 4/8-bit)
+                              +---------------------------+--------------------+
+                                                          |
+                                                          v
+                                                  local models/
 ```
 
 ## Runtime initialization
 
-`app.py` first imports only `local_ai.runtime`, which uses Python's standard library. It then calls:
+`app.py`, `smoke_test.py` and `benchmark.py` call:
 
 ```python
 configure_local_environment(offline=True)
 ```
 
-This happens before Gradio, Torch or Transformers are imported.
+before importing third-party runtime packages.
 
-The runtime function:
+`local_ai/runtime.py`:
 
-- creates local runtime directories
+- creates repository-local runtime directories
 - prepends `packages/` to `sys.path`
-- points Hugging Face cache to `cache/huggingface/`
-- points Torch cache to `cache/torch/`
-- points pip cache to `cache/pip/`
-- points temporary file variables to `temp/`
-- sets `TRANSFORMERS_OFFLINE=1`
-- sets `HF_HUB_OFFLINE=1`
+- redirects Hugging Face, Torch and pip caches
+- redirects temporary files
+- enables `TRANSFORMERS_OFFLINE`
+- enables `HF_HUB_OFFLINE`
 
-## Bootstrap phase
+## Model profiles
 
-`bootstrap.py` is the only normal phase that requires network access.
+`model_profiles.json` contains reusable hardware/model combinations.
 
-It performs two tasks:
+A profile can define model id, local model directory, device, dtype, quantization, bitsandbytes parameters, licence/access metadata and a human-readable recommendation.
+
+`config.json` selects a profile by name. Explicit keys placed under `config.json -> model` override profile defaults.
+
+`local_ai/profiles.py` resolves this into the concrete model configuration used by the rest of the application.
+
+## Bootstrap
+
+`bootstrap.py` handles the online preparation phase:
 
 ```text
-requirements.txt
-      |
-      v
-pip --target packages/
+base Python packages
+        |
+        v
+packages/
 
-Qwen/Qwen3-0.6B
-      |
-      v
+PyTorch
+  |
+  +--> default wheel source
+  |
+  +--> optional --torch-index-url for CUDA wheel source
+
+optional quantization profile
+        |
+        v
+bitsandbytes
+
+selected upstream model
+        |
+        v
 snapshot_download()
-      |
-      v
-models/qwen3-0.6b/
+        |
+        v
+models/<model>/
 ```
 
-Because `packages/`, `models/` and `cache/` are ignored by Git, a clone remains small while each machine keeps its own runtime state.
+The correct CUDA-enabled PyTorch wheel is deliberately not hard-coded because PyTorch/CUDA compatibility changes over time.
 
 ## Model engine
 
-`local_ai/engine.py` owns:
+`local_ai/engine.py` owns device validation, dtype selection, tokenizer loading, unquantized/quantized model loading, chat-template construction, input placement, history normalization, generation and benchmark helpers.
 
-- device selection
-- tokenizer loading
-- model loading
-- chat-template construction
-- history normalization
-- one-shot generation
-- streaming generation
+For `device: auto` the order is CUDA -> MPS -> CPU. Named CPU profiles set CPU explicitly for predictable benchmark comparisons.
 
-The reference model is loaded with `local_files_only=True`.
+For `dtype: auto`: CUDA uses BF16 when supported, otherwise FP16; MPS uses FP16; CPU uses FP32.
 
-For chat streaming, the engine uses `TextIteratorStreamer` and runs `model.generate()` on a background thread. The Gradio generator yields progressively larger response strings as text arrives.
+The v0.2 built-in quantized profiles use Hugging Face `BitsAndBytesConfig`. The project's supported quantized path is CUDA.
 
-## Device selection
+## Benchmark path
 
-With `device: "auto"` the current order is:
-
-```text
-CUDA -> MPS -> CPU
-```
-
-The current dtype policy is:
-
-```text
-CUDA -> float16
-CPU/MPS -> float32
-```
-
-This policy favors simplicity and compatibility for the first version rather than maximum performance.
-
-## Configuration boundary
-
-`config.json` contains values a user is expected to change without editing Python source:
-
-- upstream model ID
-- local model directory
-- device preference
-- thinking mode flag
-- generation parameters
-- system prompt
-- UI host/port/title
+`benchmark.py` uses the same settings resolver and `LocalLLM` engine as the UI. It measures load time, time to first streamed text, generation time, token counts, process RSS, model memory footprint and CUDA peaks when available.
 
 ## Network boundary
 
-The default runtime binds Gradio to:
-
-```text
-127.0.0.1
-```
-
-and sets:
-
-```python
-share=False
-```
-
-That means the application is not intentionally exposed to the LAN and does not request a Gradio public sharing tunnel.
-
-See `OFFLINE.md` and `SECURITY.md` for limitations and verification.
+The default Gradio UI binds to `127.0.0.1` with `share=False`. No external inference API is used by default. Bootstrap is the separate online phase for downloads.
 
 ## Why PyTorch/Transformers instead of llama.cpp?
 
-The purpose of this repository is specifically to explore a Python-first local LLM stack. PyTorch and Transformers still contain compiled/native components internally, but the application does not require the user to write, compile or operate a C++ inference server.
-
-This distinction is deliberate:
+The project is specifically a Python-first local LLM experiment:
 
 ```text
-This project:
 Python -> Transformers -> PyTorch -> model
-
-Not required:
-Python -> external llama.cpp/Ollama service -> model
 ```
+
+rather than requiring a separate llama.cpp/Ollama inference service. Native compiled components still exist inside PyTorch/Transformers/quantization libraries.
+
+## Supply-chain boundary
+
+The repository MIT licence applies to project code. Python dependencies, model weights, model terms, gated access, community checkpoints and quantization libraries remain separate trust/licence inputs.
+
+The project does not enable `trust_remote_code=True` by default.
 
 ## Future extension points
 
-The current structure leaves clear places for later additions without mixing them into the first working implementation:
-
-- `chats/` for local conversation persistence
-- `data/` for documents
-- a RAG/indexing module
-- multiple model profiles
-- configurable quantization/backends
+- local chat persistence
+- more model families
+- tested non-CUDA quantization backends
+- RAG/document ingestion
+- richer benchmark suites
 - local tool calling
 - desktop packaging
-
-Those features should be added only when the minimal runtime remains understandable and testable.
