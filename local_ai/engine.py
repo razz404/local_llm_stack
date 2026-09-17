@@ -6,6 +6,7 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     TextIteratorStreamer,
+    TorchAoConfig,
 )
 
 from .runtime import resolve_repo_path
@@ -57,7 +58,7 @@ class LocalLLM:
         quantization_config = self._build_quantization_config()
         if quantization_config is not None:
             load_kwargs["quantization_config"] = quantization_config
-            load_kwargs["device_map"] = "auto"
+            load_kwargs["device_map"] = self._quantized_device_map()
 
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_dir,
@@ -138,37 +139,76 @@ class LocalLLM:
             )
         return dtype
 
+    def _quantized_device_map(self):
+        if self.quantization.startswith("torchao-"):
+            return "cpu"
+        return "auto"
+
     def _build_quantization_config(self):
         if self.quantization == "none":
             return None
 
-        if self.device != "cuda":
-            raise RuntimeError(
-                "v0.2 enables bitsandbytes 4/8-bit profiles only for CUDA. "
-                "CPU and other bitsandbytes backends may work upstream, but "
-                "they are not yet a supported configuration in this project."
+        if self.quantization in {"4bit", "8bit"}:
+            if self.device != "cuda":
+                raise RuntimeError(
+                    "The built-in bitsandbytes 4/8-bit profiles are supported "
+                    "on CUDA only in this project."
+                )
+
+            if self.quantization == "8bit":
+                return BitsAndBytesConfig(load_in_8bit=True)
+
+            compute_dtype = self._select_dtype(
+                self.model_config.get(
+                    "bnb_4bit_compute_dtype",
+                    self.model_config.get("dtype", "auto"),
+                ),
+                self.device,
             )
 
-        if self.quantization == "8bit":
-            return BitsAndBytesConfig(load_in_8bit=True)
+            return BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_quant_type=self.model_config.get(
+                    "bnb_4bit_quant_type", "nf4"
+                ),
+                bnb_4bit_use_double_quant=bool(
+                    self.model_config.get("bnb_4bit_use_double_quant", True)
+                ),
+            )
 
-        compute_dtype = self._select_dtype(
-            self.model_config.get(
-                "bnb_4bit_compute_dtype",
-                self.model_config.get("dtype", "auto"),
-            ),
-            self.device,
-        )
+        if self.quantization in {
+            "torchao-int8-dynamic",
+            "torchao-int8-weightonly",
+        }:
+            if self.device != "cpu":
+                raise RuntimeError(
+                    "The experimental TorchAO INT8 profiles are currently "
+                    "supported on CPU only in this project."
+                )
 
-        return BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_quant_type=self.model_config.get(
-                "bnb_4bit_quant_type", "nf4"
-            ),
-            bnb_4bit_use_double_quant=bool(
-                self.model_config.get("bnb_4bit_use_double_quant", True)
-            ),
+            try:
+                from torchao.quantization import (
+                    Int8DynamicActivationInt8WeightConfig,
+                    Int8WeightOnlyConfig,
+                )
+            except ImportError as exc:
+                raise RuntimeError(
+                    "TorchAO is required for the selected CPU INT8 profile. "
+                    "Run bootstrap for that profile before starting the app or benchmark."
+                ) from exc
+
+            if self.quantization == "torchao-int8-dynamic":
+                ao_config = Int8DynamicActivationInt8WeightConfig()
+            else:
+                ao_config = Int8WeightOnlyConfig()
+
+            return TorchAoConfig(quant_type=ao_config)
+
+        raise ValueError(
+            "Unsupported quantization mode: "
+            f"{self.quantization}. Use none, 4bit, 8bit, "
+            "torchao-int8-dynamic or torchao-int8-weightonly."
         )
 
     def _resolve_input_device(self):
@@ -183,6 +223,8 @@ class LocalLLM:
                     if isinstance(value, int):
                         return torch.device(f"cuda:{value}")
                     return torch.device(value)
+            if any(value == "cpu" for value in hf_device_map.values()):
+                return torch.device("cpu")
 
         return torch.device(self.device)
 
@@ -297,7 +339,9 @@ class LocalLLM:
             kwargs["temperature"] = float(
                 self.generation_config.get("temperature", 0.7)
             )
-            kwargs["top_p"] = float(self.generation_config.get("top_p", 0.9))
+            kwargs["top_p"] = float(
+                self.generation_config.get("top_p", 0.9)
+            )
 
         with torch.inference_mode():
             output = self.model.generate(**kwargs)
@@ -321,4 +365,7 @@ class LocalLLM:
         getter = getattr(self.model, "get_memory_footprint", None)
         if getter is None:
             return None
-        return int(getter())
+        try:
+            return int(getter())
+        except Exception:
+            return None
