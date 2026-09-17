@@ -8,6 +8,10 @@ All notable project changes are documented here.
 
 - reusable `model_profiles.json`
 - built-in Qwen3 0.6B, 1.7B, 4B BF16, 8B 8-bit and 8B 4-bit profiles
+- experimental `qwen3-1.7b-cpu-int8-dynamic` TorchAO profile
+- experimental `qwen3-1.7b-cpu-int8-weightonly` TorchAO profile
+- optional `requirements-torchao.txt`
+- Hugging Face `TorchAoConfig` integration for CPU INT8 experiments
 - `bootstrap.py --list-profiles`
 - `bootstrap.py --profile NAME`
 - optional `--torch-index-url` for CUDA-enabled PyTorch wheels
@@ -21,20 +25,25 @@ All notable project changes are documented here.
 - cold and warm generation passes in `benchmark.py`
 - warm-vs-cold throughput and latency comparison metrics
 - per-pass process RSS and CUDA peak-memory measurements
+- quantization backend version recording for TorchAO/bitsandbytes benchmarks
 - model-profile, quantization, licensing and benchmarking documentation
 
 ### Changed
 
 - PyTorch installation is handled explicitly by `bootstrap.py`
-- quantization dependencies are optional
+- quantization dependencies are optional and selected per profile
+- TorchAO is installed with `--no-deps` after PyTorch to avoid replacing the selected PyTorch build
 - default `config.json` now selects a named model profile
 - model runtime prints profile, device, dtype and quantization mode
 - benchmark JSON schema 2 stores separate `cold_run`, `warm_run` and `warm_vs_cold` objects while retaining the original top-level generation fields as cold-pass compatibility aliases
+- model-memory reporting now degrades gracefully to `null` if a quantized tensor subclass cannot expose the usual footprint API
 
 ### Support boundary
 
 - built-in bitsandbytes profiles are supported on CUDA only in v0.2
-- other upstream bitsandbytes backends are not yet claimed as tested configurations
+- TorchAO CPU INT8 profiles are experimental and intended for benchmark-driven validation on the target machine
+- the first TorchAO comparison intentionally does not auto-enable `torch.compile`
+- other upstream TorchAO/bitsandbytes/XPU/MPS quantized backends are not yet claimed as tested configurations
 
 ## 0.1.0 - 2026-09-16
 
