@@ -1,0 +1,44 @@
+{
+  "benchmark_schema": 2,
+  "profile": "qwen3-1.7b-cpu-int8-dynamic",
+  "model_id": "Qwen/Qwen3-1.7B",
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "quantization": "torchao-int8-dynamic",
+  "python": "3.13.14",
+  "torch": "2.14.0+cpu",
+  "torchao": "0.18.0",
+  "load_seconds": 18.442,
+  "prompt_tokens": 81,
+  "max_new_tokens": 128,
+  "process_rss_before_gib": 0.302,
+  "process_rss_after_load_gib": 1.721,
+  "model_memory_footprint_gib": 6.41,
+  "cold_run": {
+    "time_to_first_text_seconds": 77.721,
+    "generation_seconds": 269.361,
+    "output_tokens": 128,
+    "output_tokens_per_second": 0.475,
+    "process_rss_after_gib": 2.665
+  },
+  "warm_run": {
+    "time_to_first_text_seconds": 87.904,
+    "generation_seconds": 296.492,
+    "output_tokens": 128,
+    "output_tokens_per_second": 0.432,
+    "process_rss_after_gib": 2.668
+  },
+  "warm_vs_cold": {
+    "warm_throughput_speedup_x": 0.909,
+    "warm_ttft_improvement_percent": -13.1,
+    "warm_generation_time_improvement_percent": -10.1,
+    "responses_match": true
+  },
+  "response": "En **lokalt språkmodell** är en modell som du kan köra **i din egen enhet** (t.ex. en dator, en mobiltelefon eller en plattform) utan att behöva nå internet eller ett externt system. Den används för att förstå och generera text på ett språk som du väljer.\n\n### Fördelar med att köra en lokal språkmodell:\n\n1. **Bättre prestanda i begränsade nätverksförhållanden**  \n   Om du inte har internet",
+  "warm_response": "En **lokalt språkmodell** är en modell som du kan köra **i din egen enhet** (t.ex. en dator, en mobiltelefon eller en plattform) utan att behöva nå internet eller ett externt system. Den används för att förstå och generera text på ett språk som du väljer.\n\n### Fördelar med att köra en lokal språkmodell:\n\n1. **Bättre prestanda i begränsade nätverksförhållanden**  \n   Om du inte har internet",
+  "time_to_first_text_seconds": 77.721,
+  "generation_seconds": 269.361,
+  "output_tokens": 128,
+  "output_tokens_per_second": 0.475,
+  "process_rss_after_generation_gib": 2.665
+}
