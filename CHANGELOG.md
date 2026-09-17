@@ -18,6 +18,9 @@ All notable project changes are documented here.
 - explicit CUDA validation for GPU profiles
 - `benchmark.py` with load time, streamed latency, token throughput, RAM and CUDA memory metrics
 - JSON benchmark output
+- cold and warm generation passes in `benchmark.py`
+- warm-vs-cold throughput and latency comparison metrics
+- per-pass process RSS and CUDA peak-memory measurements
 - model-profile, quantization, licensing and benchmarking documentation
 
 ### Changed
@@ -26,6 +29,7 @@ All notable project changes are documented here.
 - quantization dependencies are optional
 - default `config.json` now selects a named model profile
 - model runtime prints profile, device, dtype and quantization mode
+- benchmark JSON schema 2 stores separate `cold_run`, `warm_run` and `warm_vs_cold` objects while retaining the original top-level generation fields as cold-pass compatibility aliases
 
 ### Support boundary
 
