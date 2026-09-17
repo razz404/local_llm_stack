@@ -72,9 +72,7 @@ The two experimental Qwen3-1.7B CPU profiles use Hugging Face `TorchAoConfig` an
 - `Int8DynamicActivationInt8WeightConfig()`
 - `Int8WeightOnlyConfig()`
 
-The dynamic profile quantizes activations at runtime and stores the targeted linear weights in INT8. This is the more interesting experiment when matrix multiplication is compute-bound.
-
-The weight-only profile reduces weight precision but keeps activation computation at higher precision. It can be more useful when model execution is limited by memory traffic rather than arithmetic throughput.
+The dynamic profile quantizes activations at runtime and stores the targeted linear weights in INT8. The weight-only profile reduces weight precision but keeps activation computation at higher precision.
 
 Important limitations:
 
@@ -85,7 +83,21 @@ Important limitations:
 - output quality may differ from the FP32 baseline
 - `torch.compile` can materially change results, but this project deliberately leaves it disabled for the first CPU INT8 comparison
 
-The right way to evaluate these profiles is therefore to compare the exact same deterministic cold/warm benchmark against `qwen3-1.7b-cpu`.
+### Verified Dell Latitude 5340 result
+
+A real Windows CPU comparison on a Dell Latitude 5340 with 16 GB RAM used Python 3.13.14, PyTorch 2.14.0+cpu and TorchAO 0.18.0.
+
+Warm results for Qwen3-1.7B were:
+
+| Profile | Warm TTFT | Warm tok/s | Warm RSS |
+| --- | ---: | ---: | ---: |
+| FP32 | **2.120 s** | **3.078** | 6.497 GiB |
+| INT8 weight-only | 3.711 s | 1.230 | 2.801 GiB |
+| INT8 dynamic | 87.904 s | 0.432 | **2.668 GiB** |
+
+On that tested machine, FP32 was the practical interactive choice. INT8 weight-only saved substantial RAM but reduced throughput, while dynamic INT8 was not suitable for interactive use. This observation is deliberately scoped to that environment; different CPUs, operating systems, Torch/TorchAO versions and kernels can behave differently.
+
+See [Verified benchmark results](VERIFIED_BENCHMARKS.md) for the complete measurement set.
 
 ## CUDA 8-bit quantization
 
@@ -188,7 +200,7 @@ The MIT licence in this Git repository applies to this project's code, not downl
 
 Some Hugging Face repositories require account authentication and explicit approval/acceptance.
 
-Typical authentication:
+Typical Hugging Face authentication:
 
 ```cmd
 hf auth login
