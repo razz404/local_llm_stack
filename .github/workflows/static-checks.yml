@@ -27,3 +27,14 @@ jobs:
 
       - name: Validate model profiles
         run: python bootstrap.py --list-profiles
+
+      - name: Resolve every model profile through runtime settings
+        run: |
+          python - <<'PY'
+          from local_ai.profiles import load_profiles, resolve_model_config
+
+          profiles = load_profiles()
+          for name in profiles:
+              resolved = resolve_model_config({"model": {"profile": name}}, profiles)
+              print(f"{name}: {resolved['quantization']}")
+          PY
