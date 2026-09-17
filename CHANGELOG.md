@@ -38,6 +38,11 @@ All notable project changes are documented here.
 - benchmark JSON schema 2 stores separate `cold_run`, `warm_run` and `warm_vs_cold` objects while retaining the original top-level generation fields as cold-pass compatibility aliases
 - model-memory reporting now degrades gracefully to `null` if a quantized tensor subclass cannot expose the usual footprint API
 
+### Fixed
+
+- runtime profile validation now accepts `torchao-int8-dynamic` and `torchao-int8-weightonly`
+- CI now resolves every declared profile through the same runtime profile resolver used by `app.py` and `benchmark.py`, preventing bootstrap/runtime validation drift
+
 ### Support boundary
 
 - built-in bitsandbytes profiles are supported on CUDA only in v0.2
