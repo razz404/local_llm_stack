@@ -10,7 +10,7 @@ It is intended for comparing local machines and model configurations, not for pr
 python benchmark.py
 ```
 
-The benchmark now performs two generation passes after loading the model:
+The benchmark performs two generation passes after loading the model:
 
 1. **Cold pass** — the first real inference after model load
 2. **Warm pass** — the same deterministic prompt is generated again immediately with the same model process
@@ -33,6 +33,7 @@ The benchmark records:
 12. PyTorch model memory footprint when available
 13. CUDA peak allocated/reserved memory separately for each pass when CUDA is available
 14. whether the deterministic cold and warm responses match
+15. `torchao` or `bitsandbytes` version for quantized profiles when available
 
 The benchmark forces `do_sample = false` so the two passes should normally produce the same text.
 
@@ -107,6 +108,7 @@ Keep these constant when comparing results:
 - quantization method
 - context/history
 - Python/PyTorch/Transformers versions
+- quantization backend version
 - power mode
 - other system load
 
@@ -118,7 +120,7 @@ When comparing different machines, record enough hardware context to explain the
 
 ### Load time
 
-Time from creating `LocalLLM` until the model is ready. Disk speed, model size, dtype, quantization and driver initialization all influence this.
+Time from creating `LocalLLM` until the model is ready. Disk speed, model size, dtype, quantization and driver initialization all influence this. On-load quantization can significantly increase this value.
 
 ### Time to first text
 
@@ -150,7 +152,7 @@ A low RSS immediately after model load followed by a large increase after the co
 
 ### Model memory footprint
 
-Reported by the loaded Transformers/PyTorch model when available. It is useful for understanding parameter/storage footprint but is not identical to process RSS or total machine memory consumption.
+Reported by the loaded Transformers/PyTorch model when available. It is useful for understanding parameter/storage footprint but is not identical to process RSS or total machine memory consumption. Some quantized tensor subclasses may not expose a usable footprint through the same API; in that case the benchmark records `null` rather than failing the run.
 
 ### CUDA peak allocated/reserved
 
@@ -163,7 +165,34 @@ For a 16 GB CPU laptop:
 ```text
 qwen3-0.6b-cpu
 qwen3-1.7b-cpu
+qwen3-1.7b-cpu-int8-dynamic
+qwen3-1.7b-cpu-int8-weightonly
 ```
+
+The most useful comparison for CPU INT8 is:
+
+```text
+same Qwen3-1.7B weights
+same prompt
+same 128-token cap
+same machine / power mode
+
+FP32 baseline
+    vs
+TorchAO INT8 dynamic
+    vs
+TorchAO INT8 weight-only
+```
+
+Compare at least:
+
+- model-load time
+- cold TTFT
+- warm TTFT
+- warm tokens/second
+- process RSS after warm generation
+- model footprint when available
+- whether the deterministic answer remains the same or materially changes
 
 For an NVIDIA workstation laptop with around 12 GB VRAM:
 
