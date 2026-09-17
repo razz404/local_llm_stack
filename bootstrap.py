@@ -104,6 +104,8 @@ def list_profiles(profiles):
         print(f"  Quantization: {profile.get('quantization', 'none')}")
         print(f"  Licence: {profile.get('license', 'check upstream')}")
         print(f"  Gated: {profile.get('gated', 'check upstream')}")
+        if profile.get("experimental"):
+            print("  Status: experimental")
         note = profile.get("recommended_for")
         if note:
             print(f"  Recommended for: {note}")
@@ -155,14 +157,25 @@ def install_torch(index_url=None):
 
 def install_quantization_packages():
     requirements = BASE_DIR / "requirements-quantization.txt"
-    print("\nInstalling optional quantization dependencies...")
-    # Avoid letting bitsandbytes dependency resolution replace a deliberately
-    # selected CUDA PyTorch wheel with a default/CPU build.
+    print("\nInstalling optional bitsandbytes dependencies...")
+    # Avoid letting dependency resolution replace a deliberately selected
+    # CUDA PyTorch wheel with a default/CPU build.
+    run_pip(["--no-deps", "-r", str(requirements)])
+
+
+def install_torchao_packages():
+    requirements = BASE_DIR / "requirements-torchao.txt"
+    print("\nInstalling optional TorchAO dependencies...")
+    # TorchAO is installed after PyTorch. --no-deps prevents it from replacing
+    # the project-local PyTorch build selected above.
     run_pip(["--no-deps", "-r", str(requirements)])
 
 
 def verify_torch_for_profile(model_config):
-    sys.path.insert(0, str(PACKAGES_DIR))
+    packages = str(PACKAGES_DIR)
+    if packages not in sys.path:
+        sys.path.insert(0, packages)
+
     try:
         import torch
     except ImportError as exc:
@@ -184,8 +197,35 @@ def verify_torch_for_profile(model_config):
         )
 
 
+def verify_quantization_backend(model_config):
+    quantization = str(model_config.get("quantization", "none")).lower()
+    if not quantization.startswith("torchao-"):
+        return
+
+    try:
+        import torchao
+        from torchao.quantization import (
+            Int8DynamicActivationInt8WeightConfig,
+            Int8WeightOnlyConfig,
+        )
+    except (ImportError, RuntimeError) as exc:
+        raise RuntimeError(
+            "The selected TorchAO CPU INT8 profile could not import its backend. "
+            "Re-run bootstrap without --skip-packages and confirm that the installed "
+            "TorchAO/PyTorch versions are compatible on this machine."
+        ) from exc
+
+    # Keep references so static analyzers and future refactors do not mistake
+    # these imports for accidental imports.
+    _ = Int8DynamicActivationInt8WeightConfig, Int8WeightOnlyConfig
+    print(f"TorchAO: {getattr(torchao, '__version__', 'unknown')}")
+    print("TorchAO CPU INT8 support: experimental in local_llm_stack")
+
+
 def download_model(model_config):
-    sys.path.insert(0, str(PACKAGES_DIR))
+    packages = str(PACKAGES_DIR)
+    if packages not in sys.path:
+        sys.path.insert(0, packages)
 
     try:
         from huggingface_hub import snapshot_download
@@ -236,7 +276,7 @@ def parse_args():
     parser.add_argument(
         "--skip-packages",
         action="store_true",
-        help="Do not install/update base packages/.",
+        help="Do not install/update base or optional profile packages/.",
     )
     parser.add_argument(
         "--skip-torch",
@@ -289,10 +329,14 @@ def main():
         install_torch(args.torch_index_url)
 
     quantization = str(model_config.get("quantization", "none")).lower()
-    if quantization in {"4bit", "8bit"} and not args.skip_packages:
-        install_quantization_packages()
+    if not args.skip_packages:
+        if quantization in {"4bit", "8bit"}:
+            install_quantization_packages()
+        elif quantization.startswith("torchao-"):
+            install_torchao_packages()
 
     verify_torch_for_profile(model_config)
+    verify_quantization_backend(model_config)
 
     if not args.skip_model:
         download_model(model_config)
