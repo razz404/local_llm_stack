@@ -1,0 +1,43 @@
+{
+  "benchmark_schema": 2,
+  "profile": "qwen3-1.7b-cpu",
+  "model_id": "Qwen/Qwen3-1.7B",
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "quantization": "none",
+  "python": "3.13.14",
+  "torch": "2.14.0+cpu",
+  "load_seconds": 23.673,
+  "prompt_tokens": 81,
+  "max_new_tokens": 128,
+  "process_rss_before_gib": 0.3,
+  "process_rss_after_load_gib": 0.965,
+  "model_memory_footprint_gib": 6.41,
+  "cold_run": {
+    "time_to_first_text_seconds": 4.686,
+    "generation_seconds": 39.484,
+    "output_tokens": 128,
+    "output_tokens_per_second": 3.242,
+    "process_rss_after_gib": 6.494
+  },
+  "warm_run": {
+    "time_to_first_text_seconds": 2.12,
+    "generation_seconds": 41.582,
+    "output_tokens": 128,
+    "output_tokens_per_second": 3.078,
+    "process_rss_after_gib": 6.497
+  },
+  "warm_vs_cold": {
+    "warm_throughput_speedup_x": 0.949,
+    "warm_ttft_improvement_percent": 54.8,
+    "warm_generation_time_improvement_percent": -5.3,
+    "responses_match": true
+  },
+  "response": "En **lokal språkmodell** är en modell som du kör **i din egen enhet** (t.ex. en dator, en mobiltelefon eller en plattform) och inte lägger till modellen i nätverket. Den används för att förstå och generera text på ett språk som svenska, engelska, eller andra språk.\n\n### Fördelar med att köra en lokal språkmodell:\n\n1. **Förbättrad säkerhet och säkerställning**  \n   Eftersom",
+  "warm_response": "En **lokal språkmodell** är en modell som du kör **i din egen enhet** (t.ex. en dator, en mobiltelefon eller en plattform) och inte lägger till modellen i nätverket. Den används för att förstå och generera text på ett språk som svenska, engelska, eller andra språk.\n\n### Fördelar med att köra en lokal språkmodell:\n\n1. **Förbättrad säkerhet och säkerställning**  \n   Eftersom",
+  "time_to_first_text_seconds": 4.686,
+  "generation_seconds": 39.484,
+  "output_tokens": 128,
+  "output_tokens_per_second": 3.242,
+  "process_rss_after_generation_gib": 6.494
+}
