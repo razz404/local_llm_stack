@@ -19,7 +19,7 @@
     "quantization": "none",
     "license": "Apache-2.0",
     "gated": false,
-    "recommended_for": "CPU-only laptops with 16 GB RAM when slower inference is acceptable."
+    "recommended_for": "CPU-only laptops with 16 GB RAM when slower inference is acceptable; current practical 1.7B interactive baseline on the tested Dell Latitude 5340."
   },
   "qwen3-1.7b-cpu-int8-dynamic": {
     "label": "Qwen3 1.7B - CPU TorchAO INT8 dynamic",
@@ -31,7 +31,7 @@
     "license": "Apache-2.0",
     "gated": false,
     "experimental": true,
-    "recommended_for": "Experimental CPU benchmark: INT8 dynamic activations + INT8 weights via TorchAO. Compare directly with qwen3-1.7b-cpu."
+    "recommended_for": "Research and regression benchmarking only. A verified Windows CPU run on a Dell Latitude 5340 showed much lower throughput and very high TTFT despite reduced RSS; do not assume this result applies to other CPUs/backends."
   },
   "qwen3-1.7b-cpu-int8-weightonly": {
     "label": "Qwen3 1.7B - CPU TorchAO INT8 weight-only",
@@ -43,7 +43,7 @@
     "license": "Apache-2.0",
     "gated": false,
     "experimental": true,
-    "recommended_for": "Experimental CPU benchmark: INT8 weights with higher-precision activations via TorchAO. Compare directly with the FP32 and dynamic INT8 profiles."
+    "recommended_for": "Experimental memory-saving CPU benchmark. On the tested Dell Latitude 5340 it reduced RSS substantially but was slower than FP32; useful when RAM pressure matters more than interactive speed."
   },
   "qwen3-4b-cuda-bf16": {
     "label": "Qwen3 4B - CUDA BF16 baseline",
