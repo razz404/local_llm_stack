@@ -4,6 +4,13 @@ from .runtime import BASE_DIR
 
 
 PROFILES_PATH = BASE_DIR / "model_profiles.json"
+SUPPORTED_QUANTIZATION_MODES = {
+    "none",
+    "4bit",
+    "8bit",
+    "torchao-int8-dynamic",
+    "torchao-int8-weightonly",
+}
 
 
 def load_profiles():
@@ -51,9 +58,10 @@ def resolve_model_config(settings, profiles=None):
     resolved.setdefault("enable_thinking", False)
 
     quantization = str(resolved["quantization"]).lower()
-    if quantization not in {"none", "4bit", "8bit"}:
+    if quantization not in SUPPORTED_QUANTIZATION_MODES:
+        allowed = ", ".join(sorted(SUPPORTED_QUANTIZATION_MODES))
         raise ValueError(
-            "model.quantization must be one of: none, 4bit, 8bit."
+            f"model.quantization must be one of: {allowed}."
         )
     resolved["quantization"] = quantization
 
